@@ -4,44 +4,27 @@ static int plgfs_get_fh(struct file *f)
 {
 	struct plgfs_inode_info *ii;
 	struct file *fh;
-	struct inode *ih;
 	struct path path;
-	int rv;
 
 	ii = plgfs_ii(f->f_dentry->d_inode);
 
 	mutex_lock(&ii->file_hidden_mutex);
 
-	if (ii->file_hidden_cnt) {
-		ii->file_hidden_cnt++;
-		mutex_unlock(&ii->file_hidden_mutex);
-		return 0;
-	}
-
-	path.mnt = mntget(plgfs_sbi(f->f_path.mnt->mnt_sb)->path_hidden.mnt);
-	path.dentry = dget(plgfs_dh(f->f_dentry));
-
-	ih = plgfs_ih(f->f_dentry->d_inode);
-	fh = alloc_file(&path, FMODE_WRITE | FMODE_READ, fops_get(ih->i_fop));
-	if (!fh) {
-		path_put(&path);
-		module_put(ih->i_fop->owner);
-		mutex_unlock(&ii->file_hidden_mutex);
-		return -ENOMEM;
-	}
-
-	if (!fh->f_op || !fh->f_op->open)
+	if (ii->file_hidden_cnt)
 		goto out;
 
-	rv = fh->f_op->open(ih, fh);
-	if (rv) {
+	path.mnt = plgfs_sbi(f->f_path.mnt->mnt_sb)->path_hidden.mnt;
+	path.dentry = plgfs_dh(f->f_dentry);
+
+	fh = dentry_open(&path, O_RDWR, current_cred());
+	if (IS_ERR(fh)) {
+		path_put(&path);
 		mutex_unlock(&ii->file_hidden_mutex);
-		fput(fh);
-		return rv;
+		return PTR_ERR(fh);
 	}
 
-out:
 	ii->file_hidden = fh;
+out:
 	ii->file_hidden_cnt++;
 
 	mutex_unlock(&ii->file_hidden_mutex);
