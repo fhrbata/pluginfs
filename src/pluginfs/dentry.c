@@ -123,8 +123,48 @@ static void plgfs_d_release(struct dentry *d)
 	plgfs_free_context(sbi, cont);
 }
 
+static int plgfs_d_revalidate(struct dentry *d, unsigned int flags)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct dentry *dh;
+	int rv;
+
+	sbi = plgfs_sbi(d->d_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = PLGFS_DOP_D_REVALIDATE;
+	cont->op_args.d_revalidate.dentry = d;
+	cont->op_args.d_revalidate.flags = flags;
+
+	if(!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	d = cont->op_args.d_revalidate.dentry;
+	flags = cont->op_args.d_revalidate.flags;
+
+	dh = plgfs_dh(d);
+	cont->op_rv.rv_int = 1;
+	if (!(dh->d_flags & DCACHE_OP_REVALIDATE))
+		goto postcalls;
+
+	cont->op_rv.rv_int = dh->d_op->d_revalidate(d, flags);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
 const struct dentry_operations plgfs_dops = {
 	.d_release = plgfs_d_release,
+	.d_revalidate = plgfs_d_revalidate
 };
 
 struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *d, struct dentry *dh)

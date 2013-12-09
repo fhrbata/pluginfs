@@ -25,6 +25,7 @@
 
 enum plgfs_op_id {
 	PLGFS_DOP_D_RELEASE,
+	PLGFS_DOP_D_REVALIDATE,
 	PLGFS_REG_FOP_OPEN,
 	PLGFS_REG_FOP_RELEASE,
 	PLGFS_REG_FOP_LLSEEK,
@@ -113,6 +114,11 @@ union plgfs_op_args {
 	struct {
 		struct dentry *dentry;
 	} d_release;
+
+	struct {
+		struct dentry *dentry;
+		unsigned int flags;
+	} d_revalidate;
 
 	struct {
 		struct dentry *dentry;
