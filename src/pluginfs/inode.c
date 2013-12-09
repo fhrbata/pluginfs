@@ -402,6 +402,7 @@ static const struct inode_operations plgfs_dir_iops= {
 	.unlink = plgfs_dir_iop_unlink,
 	.mkdir = plgfs_dir_iop_mkdir,
 	.rmdir = plgfs_dir_iop_rmdir,
+	.setattr = plgfs_reg_iop_setattr,
 	.rename = plgfs_dir_iop_rename
 };
 
