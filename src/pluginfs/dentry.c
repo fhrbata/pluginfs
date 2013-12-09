@@ -167,7 +167,7 @@ const struct dentry_operations plgfs_dops = {
 	.d_revalidate = plgfs_d_revalidate
 };
 
-struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *d, struct dentry *dh)
+struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *d)
 {
 	struct plgfs_sb_info *sbi;
 	struct plgfs_dentry_info *di;
@@ -180,8 +180,5 @@ struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *d, struct dentry *dh)
 
 	INIT_LIST_HEAD(&di->list_walk);
 
-	di->dentry_hidden = dh; /* we use reference from caller here */
-
 	return di;
 }
-

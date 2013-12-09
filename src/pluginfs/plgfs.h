@@ -134,7 +134,7 @@ static inline struct dentry *plgfs_dh(struct dentry *d)
 	return plgfs_di(d)->dentry_hidden;
 }
 
-extern struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *, struct dentry *);
+extern struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *);
 
 extern const struct dentry_operations plgfs_dops;
 

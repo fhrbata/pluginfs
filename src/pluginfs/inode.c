@@ -47,6 +47,12 @@ static struct dentry *plgfs_dir_iop_lookup(struct inode *i, struct dentry *d,
 
 	dph = plgfs_dh(d->d_parent);
 
+	d->d_fsdata = plgfs_alloc_di(d);
+	if (IS_ERR(d->d_fsdata)) {
+		cont->op_rv.rv_dentry = ERR_CAST(d->d_fsdata);
+		goto postcalls;
+	}
+
 	mutex_lock(&dph->d_inode->i_mutex);
 	dh = lookup_one_len(d->d_name.name, dph, d->d_name.len);
 	mutex_unlock(&dph->d_inode->i_mutex);
@@ -56,12 +62,7 @@ static struct dentry *plgfs_dir_iop_lookup(struct inode *i, struct dentry *d,
 		goto postcalls;
 	}
 
-	d->d_fsdata = plgfs_alloc_di(d, dh);
-	if (IS_ERR(d->d_fsdata)) {
-		cont->op_rv.rv_dentry = ERR_CAST(d->d_fsdata);
-		dput(dh);
-		goto postcalls;
-	}
+	plgfs_di(d)->dentry_hidden = dh;
 
 	if (!dh->d_inode) {
 		d_add(d, NULL);

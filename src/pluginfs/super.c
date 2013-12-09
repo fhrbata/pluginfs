@@ -186,9 +186,11 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 	if (!sb->s_root)
 		goto err;
 
-	sb->s_root->d_fsdata = plgfs_alloc_di(sb->s_root, drh);
+	sb->s_root->d_fsdata = plgfs_alloc_di(sb->s_root);
 	if (IS_ERR(sb->s_root->d_fsdata))
 		return PTR_ERR(sb->s_root->d_fsdata);
+
+	plgfs_di(sb->s_root)->dentry_hidden = drh;
 
 	sb->s_flags |= MS_ACTIVE;
 
