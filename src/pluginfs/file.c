@@ -221,7 +221,6 @@ static int plgfs_dir_fop_iterate(struct file *f, struct dir_context *ctx)
 	struct plgfs_context *cont;
 	struct plgfs_sb_info *sbi;
 	struct inode *i;
-	struct file *fh; /* file hidden */
 	int rv;
 
 	i = f->f_dentry->d_inode;
@@ -237,14 +236,10 @@ static int plgfs_dir_fop_iterate(struct file *f, struct dir_context *ctx)
 	if (!plgfs_precall_plgs(cont, sbi))
 		goto postcalls;
 
-	fh = plgfs_fh(f);
-	if (!fh->f_op || !fh->f_op->iterate) {
-		cont->op_rv.rv_int = -ENOTDIR;
-		goto postcalls;
-	}
+	f = cont->op_args.f_iterate.file;
+	ctx = cont->op_args.f_iterate.ctx;
 
-	cont->op_rv.rv_int = fh->f_op->iterate(fh,
-			cont->op_args.f_iterate.ctx);
+	cont->op_rv.rv_int = iterate_dir(plgfs_fh(f), ctx);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
