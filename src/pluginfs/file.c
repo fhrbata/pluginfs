@@ -24,6 +24,7 @@ static int plgfs_get_fh(struct file *f)
 	struct plgfs_inode_info *ii;
 	struct file *fh;
 	struct path path;
+	int flags;
 
 	ii = plgfs_ii(f->f_dentry->d_inode);
 
@@ -35,7 +36,9 @@ static int plgfs_get_fh(struct file *f)
 	path.mnt = plgfs_sbi(f->f_path.mnt->mnt_sb)->path_hidden.mnt;
 	path.dentry = plgfs_dh(f->f_dentry);
 
-	fh = dentry_open(&path, O_RDWR, current_cred());
+	flags = O_LARGEFILE;
+	flags |= IS_RDONLY(path.dentry->d_inode) ? O_RDONLY : O_RDWR; 
+	fh = dentry_open(&path, flags, current_cred());
 	if (IS_ERR(fh)) {
 		path_put(&path);
 		mutex_unlock(&ii->file_hidden_mutex);
