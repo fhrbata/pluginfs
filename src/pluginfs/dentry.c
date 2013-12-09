@@ -109,7 +109,7 @@ static void plgfs_d_release(struct dentry *d)
 		return;
 	}
 
-	cont->op_id = PLGFS_NONE_DOP_D_RELEASE,
+	cont->op_id = PLGFS_DOP_D_RELEASE,
 	cont->op_args.d_release.dentry = d;
 
 	plgfs_precall_plgs(cont, sbi);

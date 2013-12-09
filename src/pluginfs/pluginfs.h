@@ -24,7 +24,7 @@
 #include <linux/fs.h>
 
 enum plgfs_op_id {
-	PLGFS_NONE_DOP_D_RELEASE,
+	PLGFS_DOP_D_RELEASE,
 	PLGFS_REG_FOP_OPEN,
 	PLGFS_REG_FOP_RELEASE,
 	PLGFS_REG_FOP_LLSEEK,
