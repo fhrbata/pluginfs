@@ -137,6 +137,7 @@ static int plgfs_dir_iop_create(struct inode *ip, struct dentry *d,
 		goto postcalls;
 	}
 
+	fsstack_copy_attr_times(ip, iph);
 	d_instantiate(d, i);
 
 postcalls:
