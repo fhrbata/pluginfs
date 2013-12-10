@@ -37,6 +37,8 @@ enum plgfs_op_id {
 	PLGFS_DIR_IOP_UNLINK,
 	PLGFS_DIR_IOP_MKDIR,
 	PLGFS_DIR_IOP_RMDIR,
+	PLGFS_DIR_IOP_SYMLINK,
+	PLGFS_DIR_IOP_SETATTR,
 	PLGFS_DIR_FOP_OPEN,
 	PLGFS_DIR_FOP_RELEASE,
 	PLGFS_DIR_FOP_ITERATE,
@@ -44,6 +46,10 @@ enum plgfs_op_id {
 	PLGFS_DIR_IOP_LOOKUP,
 	PLGFS_DIR_IOP_CREATE,
 	PLGFS_DIR_IOP_RENAME,
+	PLGFS_LNK_IOP_SETATTR,
+	PLGFS_LNK_IOP_READLINK,
+	PLGFS_LNK_IOP_FOLLOW_LINK,
+	PLGFS_LNK_IOP_PUT_LINK,
 	PLGFS_OP_NR
 };
 
@@ -61,6 +67,7 @@ union plgfs_op_rv {
 	struct dentry	*rv_dentry;
 	sector_t	rv_sector;
 	struct page	*rv_page;
+	void		*rv_void;
 };
 
 union plgfs_op_args {
@@ -126,6 +133,23 @@ union plgfs_op_args {
 	} i_setattr;
 
 	struct {
+		struct dentry *dentry;
+		char __user *buffer;
+		int buflen;
+	} i_readlink;
+
+	struct {
+		struct dentry *dentry;
+		struct nameidata *nd;
+	} i_follow_link;
+
+	struct {
+		struct dentry *dentry;
+		struct nameidata *nd;
+		void *cookie;
+	} i_put_link;
+
+	struct {
 		struct inode *dir;
 		struct dentry *dentry;
 	} i_unlink;
@@ -140,6 +164,12 @@ union plgfs_op_args {
 		struct inode *dir;
 		struct dentry *dentry;
 	} i_rmdir;
+
+	struct {
+		struct inode *dir;
+		struct dentry *dentry;
+		const char *name;
+	} i_symlink;
 
 	struct {
 		struct inode *dir;
