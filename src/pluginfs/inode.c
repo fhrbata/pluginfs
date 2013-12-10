@@ -596,6 +596,70 @@ postcalls:
 	return;
 }
 
+static int plgfs_dir_iop_mknod(struct inode *ip, struct dentry *d, umode_t mode,
+		dev_t dev)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct inode *iph;
+	struct dentry *dh;
+	struct inode *i;
+	int rv;
+
+	sbi = plgfs_sbi(ip->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = PLGFS_DIR_IOP_MKNOD;
+	cont->op_args.i_mknod.dir = ip;
+	cont->op_args.i_mknod.dentry = d;
+	cont->op_args.i_mknod.mode = mode;
+	cont->op_args.i_mknod.dev = dev;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	ip = cont->op_args.i_mknod.dir;
+	d = cont->op_args.i_mknod.dentry;
+	mode = cont->op_args.i_mknod.mode;
+	dev = cont->op_args.i_mknod.dev;
+
+	iph = plgfs_ih(ip);
+	dh = plgfs_dh(d);
+
+	mutex_lock_nested(&iph->i_mutex, I_MUTEX_PARENT);
+	cont->op_rv.rv_int = vfs_mknod(iph, dh, mode, dev);
+	mutex_unlock(&iph->i_mutex);
+
+	if (cont->op_rv.rv_int)
+		goto postcalls;
+
+	i = plgfs_iget(ip->i_sb, (unsigned long)dh->d_inode);
+	if (IS_ERR(i)) {
+		mutex_lock_nested(&iph->i_mutex, I_MUTEX_PARENT);
+		rv = vfs_unlink(iph, dh);
+		mutex_unlock(&iph->i_mutex);
+		if (rv)
+			pr_err("pluginfs: mknod: unlink failed: %d\n", rv);
+
+		cont->op_rv.rv_int = PTR_ERR(i);
+		goto postcalls;
+	}
+
+	d_instantiate(d, i);
+	fsstack_copy_attr_times(ip, iph);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
 static const struct inode_operations plgfs_lnk_iops= {
 	.setattr = plgfs_lnk_iop_setattr,
 	.readlink = plgfs_lnk_iop_readlink,
@@ -615,7 +679,8 @@ static const struct inode_operations plgfs_dir_iops= {
 	.rmdir = plgfs_dir_iop_rmdir,
 	.setattr = plgfs_dir_iop_setattr,
 	.rename = plgfs_dir_iop_rename,
-	.symlink = plgfs_dir_iop_symlink
+	.symlink = plgfs_dir_iop_symlink,
+	.mknod = plgfs_dir_iop_mknod
 };
 
 struct inode *plgfs_iget(struct super_block *sb, unsigned long ino)
@@ -660,6 +725,8 @@ struct inode *plgfs_iget(struct super_block *sb, unsigned long ino)
 		i->i_fop = &plgfs_dir_fops;
 	} else if (S_ISLNK(i->i_mode)) {
 		i->i_op = &plgfs_lnk_iops;
+	} else if (special_file(i->i_mode)) {
+		init_special_inode(i, i->i_mode, i->i_rdev);
 	}
 			
 	unlock_new_inode(i);

@@ -46,6 +46,7 @@ enum plgfs_op_id {
 	PLGFS_DIR_IOP_LOOKUP,
 	PLGFS_DIR_IOP_CREATE,
 	PLGFS_DIR_IOP_RENAME,
+	PLGFS_DIR_IOP_MKNOD,
 	PLGFS_LNK_IOP_SETATTR,
 	PLGFS_LNK_IOP_READLINK,
 	PLGFS_LNK_IOP_FOLLOW_LINK,
@@ -190,6 +191,13 @@ union plgfs_op_args {
 		struct inode *new_dir;
 		struct dentry *new_dentry;
 	} i_rename;
+
+	struct {
+		struct inode *dir;
+		struct dentry *dentry;
+		umode_t mode;
+		dev_t dev;
+	} i_mknod;
 };
 
 enum plgfs_rv {
