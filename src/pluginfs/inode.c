@@ -474,6 +474,12 @@ static int plgfs_dir_iop_rename(struct inode *oi, struct dentry *od,
 	}
 
 	cont->op_rv.rv_int = vfs_rename(oih, odh, nih, ndh);
+	if (cont->op_rv.rv_int)
+		goto postcalls;
+
+	fsstack_copy_attr_all(od->d_inode, odh->d_inode);
+	fsstack_copy_attr_all(ni, plgfs_ih(ni));
+	fsstack_copy_attr_all(oi, plgfs_ih(oi));
 
 trapped:
 	unlock_rename(ndh->d_parent, odh->d_parent); 
