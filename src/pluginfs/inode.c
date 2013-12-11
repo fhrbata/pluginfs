@@ -465,23 +465,22 @@ static int plgfs_dir_iop_rename(struct inode *oi, struct dentry *od,
 
 	if (trap == odh) {
 		cont->op_rv.rv_int = -EINVAL;
-		goto trapped;
+		goto unlock;
 	}
 
 	if (trap == ndh) {
 		cont->op_rv.rv_int = -ENOTEMPTY;
-		goto trapped;
+		goto unlock;
 	}
 
 	cont->op_rv.rv_int = vfs_rename(oih, odh, nih, ndh);
 	if (cont->op_rv.rv_int)
-		goto postcalls;
+		goto unlock;
 
 	fsstack_copy_attr_all(od->d_inode, odh->d_inode);
 	fsstack_copy_attr_all(ni, plgfs_ih(ni));
 	fsstack_copy_attr_all(oi, plgfs_ih(oi));
-
-trapped:
+unlock:
 	unlock_rename(ndh->d_parent, odh->d_parent); 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
