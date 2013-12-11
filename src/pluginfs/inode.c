@@ -313,6 +313,7 @@ static int plgfs_dir_iop_unlink(struct inode *ip, struct dentry *d)
 	mutex_unlock(&iph->i_mutex);
 
 	fsstack_copy_attr_times(ip, iph);
+	fsstack_copy_attr_times(d->d_inode, ih);
 	set_nlink(d->d_inode, ih->i_nlink);
 
 postcalls:
