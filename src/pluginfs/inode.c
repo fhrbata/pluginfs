@@ -174,8 +174,15 @@ static int plgfs_iop_setattr(struct dentry *d, struct iattr *ia, int op_id)
 	if (!plgfs_precall_plgs(cont, sbi))
 		goto postcalls;
 
+	d = cont->op_args.i_setattr.dentry;
+	ia = cont->op_args.i_setattr.iattr;
+	f = ia->ia_file;
+
 	if (ia->ia_valid & ATTR_FILE)
 		ia->ia_file = plgfs_fh(f);
+
+	if (ia->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
+		ia->ia_valid &= ~ATTR_MODE;
 
 	d = cont->op_args.i_setattr.dentry;
 	ia = cont->op_args.i_setattr.iattr;
