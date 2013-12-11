@@ -139,6 +139,7 @@ static int plgfs_dir_iop_create(struct inode *ip, struct dentry *d,
 	}
 
 	fsstack_copy_attr_times(ip, iph);
+	fsstack_copy_inode_size(ip, iph);
 	d_instantiate(d, i);
 
 postcalls:
@@ -185,7 +186,6 @@ static int plgfs_iop_setattr(struct dentry *d, struct iattr *ia, int op_id)
 	mutex_unlock(&dh->d_inode->i_mutex);
 
 	fsstack_copy_attr_all(d->d_inode, dh->d_inode);
-	fsstack_copy_inode_size(d->d_inode, dh->d_inode);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
@@ -298,8 +298,9 @@ static int plgfs_dir_iop_mkdir(struct inode *ip, struct dentry *d, umode_t m)
 		goto postcalls;
 	}
 
-	d_instantiate(d, i);
 	fsstack_copy_attr_times(ip, iph);
+	fsstack_copy_inode_size(ip, iph);
+	d_instantiate(d, i);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
@@ -460,8 +461,9 @@ static int plgfs_dir_iop_symlink(struct inode *ip, struct dentry *d,
 		goto postcalls;
 	}
 
-	d_instantiate(d, i);
 	fsstack_copy_attr_times(ip, iph);
+	fsstack_copy_inode_size(ip, iph);
+	d_instantiate(d, i);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
@@ -647,8 +649,9 @@ static int plgfs_dir_iop_mknod(struct inode *ip, struct dentry *d, umode_t mode,
 		goto postcalls;
 	}
 
-	d_instantiate(d, i);
 	fsstack_copy_attr_times(ip, iph);
+	fsstack_copy_inode_size(ip, iph);
+	d_instantiate(d, i);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
