@@ -34,11 +34,13 @@ enum plgfs_op_id {
 	PLGFS_REG_FOP_FSYNC,
 	PLGFS_REG_FOP_MMAP,
 	PLGFS_REG_IOP_SETATTR,
+	PLGFS_REG_IOP_GETATTR,
 	PLGFS_DIR_IOP_UNLINK,
 	PLGFS_DIR_IOP_MKDIR,
 	PLGFS_DIR_IOP_RMDIR,
 	PLGFS_DIR_IOP_SYMLINK,
 	PLGFS_DIR_IOP_SETATTR,
+	PLGFS_DIR_IOP_GETATTR,
 	PLGFS_DIR_FOP_OPEN,
 	PLGFS_DIR_FOP_RELEASE,
 	PLGFS_DIR_FOP_ITERATE,
@@ -47,7 +49,9 @@ enum plgfs_op_id {
 	PLGFS_DIR_IOP_CREATE,
 	PLGFS_DIR_IOP_RENAME,
 	PLGFS_DIR_IOP_MKNOD,
+	PLGFS_DIR_IOP_LINK,
 	PLGFS_LNK_IOP_SETATTR,
+	PLGFS_LNK_IOP_GETATTR,
 	PLGFS_LNK_IOP_READLINK,
 	PLGFS_LNK_IOP_FOLLOW_LINK,
 	PLGFS_LNK_IOP_PUT_LINK,
@@ -134,6 +138,12 @@ union plgfs_op_args {
 	} i_setattr;
 
 	struct {
+		struct vfsmount *mnt;
+		struct dentry *dentry;
+		struct kstat *stat;
+	} i_getattr;
+
+	struct {
 		struct dentry *dentry;
 		char __user *buffer;
 		int buflen;
@@ -198,6 +208,12 @@ union plgfs_op_args {
 		umode_t mode;
 		dev_t dev;
 	} i_mknod;
+
+	struct {
+		struct dentry *old_dentry;
+		struct inode *dir;
+		struct dentry *new_dentry;
+	} i_link;
 };
 
 enum plgfs_rv {

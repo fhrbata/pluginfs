@@ -221,11 +221,12 @@ static int plgfs_lnk_iop_setattr(struct dentry *d, struct iattr *ia)
 	return plgfs_iop_setattr(d, ia, PLGFS_LNK_IOP_SETATTR);
 }
 
-static int plgfs_dir_iop_unlink(struct inode *i, struct dentry *d)
+static int plgfs_iop_getattr(struct vfsmount *m, struct dentry *d,
+		struct kstat *stat, int op_id)
 {
 	struct plgfs_context *cont;
 	struct plgfs_sb_info *sbi;
-	struct inode *ih;
+	struct path path;
 	int rv;
 
 	sbi = plgfs_sbi(d->d_inode->i_sb);
@@ -233,20 +234,86 @@ static int plgfs_dir_iop_unlink(struct inode *i, struct dentry *d)
 	if (IS_ERR(cont))
 		return PTR_ERR(cont);
 
+	cont->op_id = op_id;
+	cont->op_args.i_getattr.mnt = m;
+	cont->op_args.i_getattr.dentry = d;
+	cont->op_args.i_getattr.stat = stat;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	m = cont->op_args.i_getattr.mnt;
+	d = cont->op_args.i_getattr.dentry;
+	stat = cont->op_args.i_getattr.stat;
+
+	path.mnt = sbi->path_hidden.mnt;
+	path.dentry = plgfs_dh(d);
+
+	cont->op_rv.rv_int = vfs_getattr(&path, stat);
+	if (cont->op_rv.rv_int)
+		goto postcalls;
+
+	fsstack_copy_attr_all(d->d_inode, plgfs_dh(d)->d_inode);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static int plgfs_reg_iop_getattr(struct vfsmount *m, struct dentry *d,
+		struct kstat *stat)
+{
+	return plgfs_iop_getattr(m, d, stat, PLGFS_REG_IOP_GETATTR);
+}
+
+static int plgfs_dir_iop_getattr(struct vfsmount *m, struct dentry *d,
+		struct kstat *stat)
+{
+	return plgfs_iop_getattr(m, d, stat, PLGFS_DIR_IOP_GETATTR);
+}
+
+static int plgfs_lnk_iop_getattr(struct vfsmount *m, struct dentry *d,
+		struct kstat *stat)
+{
+	return plgfs_iop_getattr(m, d, stat, PLGFS_LNK_IOP_GETATTR);
+}
+
+static int plgfs_dir_iop_unlink(struct inode *ip, struct dentry *d)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct inode *ih;
+	struct inode *iph;
+	int rv;
+
+	sbi = plgfs_sbi(ip->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
 	cont->op_id = PLGFS_DIR_IOP_UNLINK;
-	cont->op_args.i_unlink.dir = i;
+	cont->op_args.i_unlink.dir = ip;
 	cont->op_args.i_unlink.dentry = d;
 
 	if (!plgfs_precall_plgs(cont, sbi))
 		goto postcalls;
 
-	i = cont->op_args.i_unlink.dir;
+	ip = cont->op_args.i_unlink.dir;
 	d = cont->op_args.i_unlink.dentry;
-	ih = plgfs_ih(i);
+	iph = plgfs_ih(ip);
+	ih = plgfs_dh(d)->d_inode;
 
-	mutex_lock_nested(&ih->i_mutex, I_MUTEX_PARENT);
-	cont->op_rv.rv_int = vfs_unlink(ih, plgfs_dh(d));
-	mutex_unlock(&ih->i_mutex);
+	mutex_lock_nested(&iph->i_mutex, I_MUTEX_PARENT);
+	cont->op_rv.rv_int = vfs_unlink(iph, plgfs_dh(d));
+	mutex_unlock(&iph->i_mutex);
+
+	fsstack_copy_attr_times(ip, iph);
+	set_nlink(d->d_inode, ih->i_nlink);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
@@ -307,8 +374,8 @@ static int plgfs_dir_iop_mkdir(struct inode *ip, struct dentry *d, umode_t m)
 
 	fsstack_copy_attr_times(ip, iph);
 	fsstack_copy_inode_size(ip, iph);
+	set_nlink(ip, iph->i_nlink);
 	d_instantiate(d, i);
-
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
 
@@ -347,6 +414,7 @@ static int plgfs_dir_iop_rmdir(struct inode *ip, struct dentry *d)
 	mutex_unlock(&iph->i_mutex);
 
 	fsstack_copy_attr_times(ip, iph);
+	set_nlink(ip, iph->i_nlink);
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
 
@@ -670,15 +738,77 @@ postcalls:
 	return rv;
 }
 
+static int plgfs_dir_iop_link(struct dentry *dold, struct inode *ip,
+		struct dentry *dnew)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct inode *iph;
+	struct inode *i;
+	int rv;
+
+	sbi = plgfs_sbi(ip->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = PLGFS_DIR_IOP_LINK;
+	cont->op_args.i_link.old_dentry = dold;
+	cont->op_args.i_link.dir = ip;
+	cont->op_args.i_link.new_dentry = dnew;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	dold = cont->op_args.i_link.old_dentry;
+	ip = cont->op_args.i_link.dir;
+	dnew = cont->op_args.i_link.new_dentry;
+	iph = plgfs_ih(ip);
+
+	mutex_lock_nested(&iph->i_mutex, I_MUTEX_PARENT);
+	cont->op_rv.rv_int = vfs_link(plgfs_dh(dold), iph, plgfs_dh(dnew));
+	mutex_unlock(&iph->i_mutex);
+
+	if (cont->op_rv.rv_int)
+		goto postcalls;
+
+	i = plgfs_iget(ip->i_sb, (unsigned long)plgfs_dh(dnew)->d_inode);
+	if (IS_ERR(i)) {
+		mutex_lock_nested(&iph->i_mutex, I_MUTEX_PARENT);
+		rv = vfs_unlink(iph, plgfs_dh(dnew));
+		mutex_unlock(&iph->i_mutex);
+		if (rv)
+			pr_err("pluginfs: link: unlink failed: %d\n", rv);
+
+		cont->op_rv.rv_int = PTR_ERR(i);
+		goto postcalls;
+	}
+
+	fsstack_copy_attr_times(ip, iph);
+	fsstack_copy_inode_size(ip, iph);
+	set_nlink(dold->d_inode, plgfs_dh(dold)->d_inode->i_nlink);
+	d_instantiate(dnew, i);
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
 static const struct inode_operations plgfs_lnk_iops= {
 	.setattr = plgfs_lnk_iop_setattr,
+	.getattr = plgfs_lnk_iop_getattr,
 	.readlink = plgfs_lnk_iop_readlink,
 	.follow_link = plgfs_lnk_iop_follow_link,
 	.put_link = plgfs_lnk_iop_put_link
 };
 
 static const struct inode_operations plgfs_reg_iops= {
-	.setattr = plgfs_reg_iop_setattr
+	.setattr = plgfs_reg_iop_setattr,
+	.getattr = plgfs_reg_iop_getattr
 };
 
 static const struct inode_operations plgfs_dir_iops= {
@@ -688,38 +818,30 @@ static const struct inode_operations plgfs_dir_iops= {
 	.mkdir = plgfs_dir_iop_mkdir,
 	.rmdir = plgfs_dir_iop_rmdir,
 	.setattr = plgfs_dir_iop_setattr,
+	.getattr = plgfs_dir_iop_getattr,
 	.rename = plgfs_dir_iop_rename,
 	.symlink = plgfs_dir_iop_symlink,
-	.mknod = plgfs_dir_iop_mknod
+	.mknod = plgfs_dir_iop_mknod,
+	.link = plgfs_dir_iop_link
 };
 
-struct inode *plgfs_iget(struct super_block *sb, unsigned long ino)
+static int plgfs_inode_test(struct inode *i, void *ih)
 {
-	struct inode *i;
-	struct inode *ih;
+	if (plgfs_ih(i) == (struct inode *)ih)
+		return 1;
+	return 0;
+}
+
+static int plgfs_inode_set(struct inode *i, void *data)
+{
 	struct plgfs_inode_info *ii;
+	struct inode *ih;
 
-	ih = (struct inode *)ino;
+	ih = (struct inode *)data;
 
-	if (!igrab(ih))
-		return ERR_PTR(-ESTALE);
-
-	i = iget_locked(sb, ino);
-	if (!i) {
-		iput(ih);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	if (!(i->i_state & I_NEW)) {
-		iput(ih);
-		return i;
-	}
-
-	ii = plgfs_alloc_ii(plgfs_sbi(sb));
-	if (IS_ERR(ii)) {
-		iput(ih);
-		return ERR_CAST(ii);
-	}
+	ii = plgfs_alloc_ii(plgfs_sbi(i->i_sb));
+	if (IS_ERR(ii))
+		return PTR_ERR(ii);
 
 	i->i_private = ii;
 	i->i_ino = ih->i_ino;
@@ -738,7 +860,33 @@ struct inode *plgfs_iget(struct super_block *sb, unsigned long ino)
 	} else if (special_file(i->i_mode)) {
 		init_special_inode(i, i->i_mode, i->i_rdev);
 	}
-			
+
+	return 0;
+}
+
+struct inode *plgfs_iget(struct super_block *sb, unsigned long ino)
+{
+	struct inode *i;
+	struct inode *ih;
+
+	ih = (struct inode *)ino;
+
+	if (!igrab(ih))
+		return ERR_PTR(-ESTALE);
+
+	i = iget5_locked(sb, ino, plgfs_inode_test, plgfs_inode_set, ih);
+	if (!i) {
+		iput(ih);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	if (!(i->i_state & I_NEW)) {
+		fsstack_copy_attr_all(i, ih);
+		fsstack_copy_inode_size(i, ih);
+		iput(ih);
+		return i;
+	}
+
 	unlock_new_inode(i);
 
 	return i;
