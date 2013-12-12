@@ -7,7 +7,7 @@ else
 
 # See Documentation/kbuild/modules.txt
 
-# extra => pluginfs, default is /lib/modules/$(KERNELRELEASE)/extra/
+# extra => pluginfs, default is /lib/modules/$(KERNELRELEASE)/
 MDIR ?= pluginfs
 # module installation directory prefix
 MPATH ?=

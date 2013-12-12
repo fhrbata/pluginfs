@@ -208,3 +208,4 @@ module_exit(plgfs_exit);
 
 MODULE_DESCRIPTION("Plugin File System Version " PLGFS_VERSION);
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_FS("pluginfs");
