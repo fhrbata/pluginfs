@@ -69,6 +69,17 @@ void plgfs_postcall_plgs(struct plgfs_context *cont, struct plgfs_sb_info *sbi)
 	}
 }
 
+struct plgfs_context *plgfs_alloc_context_atomic(struct plgfs_sb_info *sbi)
+{
+	struct plgfs_context *cont;
+
+	cont = kmem_cache_zalloc(sbi->cache->ci_cache, GFP_ATOMIC);
+	if (!cont)
+		return ERR_PTR(-ENOMEM);
+
+	return cont;
+}
+
 struct plgfs_context *plgfs_alloc_context(struct plgfs_sb_info *sbi)
 {
 	struct plgfs_context *cont;

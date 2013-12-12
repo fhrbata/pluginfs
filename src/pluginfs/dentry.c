@@ -131,7 +131,7 @@ static int plgfs_d_revalidate(struct dentry *d, unsigned int flags)
 	int rv;
 
 	sbi = plgfs_sbi(d->d_sb);
-	cont = plgfs_alloc_context(sbi);
+	cont = plgfs_alloc_context_atomic(sbi);
 	if (IS_ERR(cont))
 		return PTR_ERR(cont);
 
@@ -150,7 +150,7 @@ static int plgfs_d_revalidate(struct dentry *d, unsigned int flags)
 	if (!(dh->d_flags & DCACHE_OP_REVALIDATE))
 		goto postcalls;
 
-	cont->op_rv.rv_int = dh->d_op->d_revalidate(d, flags);
+	cont->op_rv.rv_int = dh->d_op->d_revalidate(dh, flags);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);

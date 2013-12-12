@@ -185,6 +185,7 @@ extern void plgfs_put_plgs(struct plgfs_plugin **, int);
 extern int plgfs_precall_plgs(struct plgfs_context *, struct plgfs_sb_info *);
 extern void plgfs_postcall_plgs(struct plgfs_context *, struct plgfs_sb_info *);
 
+extern struct plgfs_context *plgfs_alloc_context_atomic(struct plgfs_sb_info *);
 extern struct plgfs_context *plgfs_alloc_context(struct plgfs_sb_info *);
 extern void plgfs_free_context(struct plgfs_sb_info *, struct plgfs_context *);
 
