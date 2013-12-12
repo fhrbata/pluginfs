@@ -40,7 +40,6 @@ static int plgfs_get_fh(struct file *f)
 	flags |= IS_RDONLY(path.dentry->d_inode) ? O_RDONLY : O_RDWR; 
 	fh = dentry_open(&path, flags, current_cred());
 	if (IS_ERR(fh)) {
-		path_put(&path);
 		mutex_unlock(&ii->file_hidden_mutex);
 		return PTR_ERR(fh);
 	}
