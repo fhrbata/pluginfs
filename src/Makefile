@@ -20,12 +20,21 @@ MINC := -I$(PWD)/pluginfs
 default: all
 
 help:
-	@echo "tags"
-	@echo "tags-clean"
-	@echo "cscope"
-	@echo "cscope-clean"
-	@echo "ctags"
-	@echo "ctags-clean"
+	@echo "all               - build modules and create tags, default"
+	@echo "help              - display this help"
+	@echo "modules           - build modules"
+	@echo "modules-clean     - delete created modules"
+	@echo "modules-install   - install modules"
+	@echo "modules-uninstall - uninstall modules"
+	@echo "tags              - generate cscope and tags indexes"
+	@echo "tags-clean        - delete cscope and tags indexes"
+	@echo "cscope            - generate cscope index"
+	@echo "cscope-clean      - delete cscope index"
+	@echo "ctags             - generate tags index"
+	@echo "ctags-clean       - delete tags index"
+	@echo "install           - install modules"
+	@echo "uninstall         - uninstall modules"
+	@echo "clean             - delete modules and cscope and tags indexes"
 
 modules:
 	$(MAKE) -C $(KDIR)/build M=$(PWD) EXTRA_CFLAGS=$(MINC) modules
