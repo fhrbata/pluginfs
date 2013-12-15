@@ -35,12 +35,14 @@ enum plgfs_op_id {
 	PLGFS_REG_FOP_MMAP,
 	PLGFS_REG_IOP_SETATTR,
 	PLGFS_REG_IOP_GETATTR,
+	PLGFS_REG_IOP_PERMISSION,
 	PLGFS_DIR_IOP_UNLINK,
 	PLGFS_DIR_IOP_MKDIR,
 	PLGFS_DIR_IOP_RMDIR,
 	PLGFS_DIR_IOP_SYMLINK,
 	PLGFS_DIR_IOP_SETATTR,
 	PLGFS_DIR_IOP_GETATTR,
+	PLGFS_DIR_IOP_PERMISSION,
 	PLGFS_DIR_FOP_OPEN,
 	PLGFS_DIR_FOP_RELEASE,
 	PLGFS_DIR_FOP_ITERATE,
@@ -55,6 +57,7 @@ enum plgfs_op_id {
 	PLGFS_LNK_IOP_READLINK,
 	PLGFS_LNK_IOP_FOLLOW_LINK,
 	PLGFS_LNK_IOP_PUT_LINK,
+	PLGFS_LNK_IOP_PERMISSION,
 	PLGFS_OP_NR
 };
 
@@ -142,6 +145,11 @@ union plgfs_op_args {
 		struct dentry *dentry;
 		struct kstat *stat;
 	} i_getattr;
+
+	struct {
+		struct inode *inode;
+		int mask;
+	} i_permission;
 
 	struct {
 		struct dentry *dentry;

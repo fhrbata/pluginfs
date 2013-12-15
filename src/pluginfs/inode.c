@@ -554,7 +554,6 @@ postcalls:
 	plgfs_free_context(sbi, cont);
 
 	return rv;
-
 }
 
 static int plgfs_lnk_iop_readlink(struct dentry *d, char __user *b, int s)
@@ -804,17 +803,67 @@ postcalls:
 	return rv;
 }
 
+static int plgfs_iop_permission(struct inode *i, int mask, int op_id)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	int rv;
+
+	sbi = plgfs_sbi(i->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = op_id;
+	cont->op_args.i_permission.inode = i;
+	cont->op_args.i_permission.mask = mask;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	i = cont->op_args.i_permission.inode;
+	mask = cont->op_args.i_permission.mask;
+
+	cont->op_rv.rv_int = inode_permission(plgfs_ih(i), mask);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static int plgfs_lnk_iop_permission(struct inode *i, int mask)
+{
+	return plgfs_iop_permission(i, mask, PLGFS_LNK_IOP_PERMISSION);
+}
+
+static int plgfs_reg_iop_permission(struct inode *i, int mask)
+{
+	return plgfs_iop_permission(i, mask, PLGFS_REG_IOP_PERMISSION);
+}
+
+static int plgfs_dir_iop_permission(struct inode *i, int mask)
+{
+	return plgfs_iop_permission(i, mask, PLGFS_DIR_IOP_PERMISSION);
+}
+
 static const struct inode_operations plgfs_lnk_iops= {
 	.setattr = plgfs_lnk_iop_setattr,
 	.getattr = plgfs_lnk_iop_getattr,
 	.readlink = plgfs_lnk_iop_readlink,
 	.follow_link = plgfs_lnk_iop_follow_link,
-	.put_link = plgfs_lnk_iop_put_link
+	.put_link = plgfs_lnk_iop_put_link,
+	.permission = plgfs_lnk_iop_permission
 };
 
 static const struct inode_operations plgfs_reg_iops= {
 	.setattr = plgfs_reg_iop_setattr,
-	.getattr = plgfs_reg_iop_getattr
+	.getattr = plgfs_reg_iop_getattr,
+	.permission = plgfs_reg_iop_permission
 };
 
 static const struct inode_operations plgfs_dir_iops= {
@@ -828,7 +877,8 @@ static const struct inode_operations plgfs_dir_iops= {
 	.rename = plgfs_dir_iop_rename,
 	.symlink = plgfs_dir_iop_symlink,
 	.mknod = plgfs_dir_iop_mknod,
-	.link = plgfs_dir_iop_link
+	.link = plgfs_dir_iop_link,
+	.permission = plgfs_dir_iop_permission
 };
 
 static int plgfs_inode_test(struct inode *i, void *ih)
