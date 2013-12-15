@@ -70,6 +70,7 @@ enum plgfs_op_id {
 	PLGFS_LNK_IOP_GETXATTR,
 	PLGFS_LNK_IOP_LISTXATTR,
 	PLGFS_LNK_IOP_REMOVEXATTR,
+	PLGFS_SOP_REMOUNT_FS,
 	PLGFS_OP_NR
 };
 
@@ -260,6 +261,12 @@ union plgfs_op_args {
 		struct inode *dir;
 		struct dentry *new_dentry;
 	} i_link;
+
+	struct {
+		struct super_block *sb;
+		int *flags;
+		char *data;
+	} s_remount_fs;
 };
 
 enum plgfs_rv {

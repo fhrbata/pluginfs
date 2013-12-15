@@ -70,6 +70,7 @@ struct plgfs_mnt_cfg {
 
 extern struct plgfs_mnt_cfg *plgfs_get_cfg(struct file_system_type *fs_type,
 		int flags, const char *dev_name, void *data);
+extern struct plgfs_mnt_cfg *plgfs_get_cfg_nodev(int flags, void *data);
 
 extern void plgfs_put_cfg(struct plgfs_mnt_cfg *cfg);
 
@@ -114,6 +115,11 @@ struct plgfs_sb_info {
 static inline struct plgfs_sb_info *plgfs_sbi(struct super_block *sb)
 {
 	return sb->s_fs_info;
+}
+
+static inline struct super_block *plgfs_sbh(struct super_block *sb)
+{
+	return plgfs_sbi(sb)->path_hidden.mnt->mnt_sb;
 }
 
 extern int plgfs_fill_super(struct super_block *, int, struct plgfs_mnt_cfg *);

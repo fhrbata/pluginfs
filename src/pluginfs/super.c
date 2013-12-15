@@ -57,10 +57,63 @@ static void plgfs_put_super(struct super_block *sb)
 	plgfs_free_sbi(plgfs_sbi(sb));
 }
 
+static int plgfs_remount_fs(struct super_block *sb, int *f, char *d)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct super_block *sbh;
+	struct plgfs_mnt_cfg *cfg;
+	int rv;
+
+	sbi = plgfs_sbi(sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cfg = plgfs_get_cfg_nodev(*f, d);
+	if (IS_ERR(cfg))
+		return PTR_ERR(cfg);
+
+	cont->op_id = PLGFS_SOP_REMOUNT_FS;
+	cont->op_args.s_remount_fs.sb = sb;
+	cont->op_args.s_remount_fs.flags = f;
+	cont->op_args.s_remount_fs.data = d;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+	
+	cont->op_rv.rv_int = 0;
+
+	if (!sbi->pdev)
+		goto postcalls;
+
+	sb = cont->op_args.s_remount_fs.sb;
+	f = cont->op_args.s_remount_fs.flags;
+	d = cont->op_args.s_remount_fs.data;
+
+	sbh = plgfs_sbh(sb);
+	if (!sbh->s_op->remount_fs)
+		goto postcalls;
+
+	cont->op_rv.rv_int = sbh->s_op->remount_fs(sbh, f, cfg->opts);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	plgfs_put_cfg(cfg);
+
+	return rv;
+}
+
 static const struct super_operations plgfs_sops = {
 	.evict_inode = plgfs_evict_inode,
 	.put_super = plgfs_put_super,
-	.show_options = plgfs_show_options
+	.show_options = plgfs_show_options,
+	.remount_fs = plgfs_remount_fs
 };
 
 static const char *plgfs_supported_fs_names[] = {

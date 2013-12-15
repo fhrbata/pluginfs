@@ -181,6 +181,9 @@ struct plgfs_mnt_cfg *plgfs_get_cfg(struct file_system_type *fs_type,
 
 	plgfs_sort_plgs(cfg->plgs, cfg->plgs_nr);
 
+	if (!dev_name)
+		return cfg;
+
 	rv = kern_path(dev_name, LOOKUP_FOLLOW, &cfg->path);
 	if (rv)
 		goto err;
@@ -206,6 +209,11 @@ err:
 	plgfs_put_cfg(cfg);
 
 	return ERR_PTR(rv);
+}
+
+struct plgfs_mnt_cfg *plgfs_get_cfg_nodev(int flags, void *data)
+{
+	return plgfs_get_cfg(NULL, flags, NULL, data);
 }
 
 void plgfs_put_cfg(struct plgfs_mnt_cfg *cfg)
