@@ -36,6 +36,10 @@ enum plgfs_op_id {
 	PLGFS_REG_IOP_SETATTR,
 	PLGFS_REG_IOP_GETATTR,
 	PLGFS_REG_IOP_PERMISSION,
+	PLGFS_REG_IOP_SETXATTR,
+	PLGFS_REG_IOP_GETXATTR,
+	PLGFS_REG_IOP_LISTXATTR,
+	PLGFS_REG_IOP_REMOVEXATTR,
 	PLGFS_DIR_IOP_UNLINK,
 	PLGFS_DIR_IOP_MKDIR,
 	PLGFS_DIR_IOP_RMDIR,
@@ -43,6 +47,10 @@ enum plgfs_op_id {
 	PLGFS_DIR_IOP_SETATTR,
 	PLGFS_DIR_IOP_GETATTR,
 	PLGFS_DIR_IOP_PERMISSION,
+	PLGFS_DIR_IOP_SETXATTR,
+	PLGFS_DIR_IOP_GETXATTR,
+	PLGFS_DIR_IOP_LISTXATTR,
+	PLGFS_DIR_IOP_REMOVEXATTR,
 	PLGFS_DIR_FOP_OPEN,
 	PLGFS_DIR_FOP_RELEASE,
 	PLGFS_DIR_FOP_ITERATE,
@@ -58,6 +66,10 @@ enum plgfs_op_id {
 	PLGFS_LNK_IOP_FOLLOW_LINK,
 	PLGFS_LNK_IOP_PUT_LINK,
 	PLGFS_LNK_IOP_PERMISSION,
+	PLGFS_LNK_IOP_SETXATTR,
+	PLGFS_LNK_IOP_GETXATTR,
+	PLGFS_LNK_IOP_LISTXATTR,
+	PLGFS_LNK_IOP_REMOVEXATTR,
 	PLGFS_OP_NR
 };
 
@@ -150,6 +162,32 @@ union plgfs_op_args {
 		struct inode *inode;
 		int mask;
 	} i_permission;
+
+	struct {
+		struct dentry *dentry;
+		const char *name;
+		const void *value;
+		size_t size;
+		int flags;
+	} i_setxattr;
+
+	struct {
+		struct dentry *dentry;
+		const char *name;
+		void *value;
+		size_t size;
+	} i_getxattr;
+
+	struct {
+		struct dentry *dentry;
+		char *list;
+		size_t size;
+	} i_listxattr;
+
+	struct {
+		struct dentry *dentry;
+		const char *name;
+	} i_removexattr;
 
 	struct {
 		struct dentry *dentry;

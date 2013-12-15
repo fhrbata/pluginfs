@@ -851,19 +851,248 @@ static int plgfs_dir_iop_permission(struct inode *i, int mask)
 	return plgfs_iop_permission(i, mask, PLGFS_DIR_IOP_PERMISSION);
 }
 
+static int plgfs_iop_setxattr(struct dentry *d, const char *n,
+		const void *v, size_t s, int f, int op_id)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct dentry *dh;
+	int rv;
+
+	sbi = plgfs_sbi(d->d_inode->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = op_id;
+	cont->op_args.i_setxattr.dentry = d;
+	cont->op_args.i_setxattr.name = n;
+	cont->op_args.i_setxattr.value = v;
+	cont->op_args.i_setxattr.size = s;
+	cont->op_args.i_setxattr.flags = f;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	
+	d = cont->op_args.i_setxattr.dentry;
+	n = cont->op_args.i_setxattr.name;
+	v = cont->op_args.i_setxattr.value;
+	s = cont->op_args.i_setxattr.size;
+	f = cont->op_args.i_setxattr.flags;
+
+	dh = plgfs_dh(d);
+
+	cont->op_rv.rv_int = vfs_setxattr(dh, n, v, s, f);
+	if (cont->op_rv.rv_int)
+		goto postcalls;
+
+	fsstack_copy_attr_all(d->d_inode, dh->d_inode);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static int plgfs_lnk_iop_setxattr(struct dentry *d, const char *n,
+		const void *v, size_t s, int f)
+{
+	return plgfs_iop_setxattr(d, n, v, s, f, PLGFS_LNK_IOP_SETXATTR);
+}
+
+static int plgfs_reg_iop_setxattr(struct dentry *d, const char *n,
+		const void *v, size_t s, int f)
+{
+	return plgfs_iop_setxattr(d, n, v, s, f, PLGFS_REG_IOP_SETXATTR);
+}
+
+static int plgfs_dir_iop_setxattr(struct dentry *d, const char *n,
+		const void *v, size_t s, int f)
+{
+	return plgfs_iop_setxattr(d, n, v, s, f, PLGFS_DIR_IOP_SETXATTR);
+}
+
+static ssize_t plgfs_iop_getxattr(struct dentry *d, const char *n,
+		void *v, size_t s, int op_id)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	ssize_t rv;
+
+	sbi = plgfs_sbi(d->d_inode->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = op_id;
+	cont->op_args.i_getxattr.dentry = d;
+	cont->op_args.i_getxattr.name = n;
+	cont->op_args.i_getxattr.value = v;
+	cont->op_args.i_getxattr.size = s;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+	
+	d = cont->op_args.i_getxattr.dentry;
+	n = cont->op_args.i_getxattr.name;
+	v = cont->op_args.i_getxattr.value;
+	s = cont->op_args.i_getxattr.size;
+
+	cont->op_rv.rv_ssize = vfs_getxattr(plgfs_dh(d), n, v, s);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static ssize_t plgfs_lnk_iop_getxattr(struct dentry *d, const char *n,
+		void *v, size_t s)
+{
+	return plgfs_iop_getxattr(d, n, v, s, PLGFS_LNK_IOP_GETXATTR);
+}
+
+static ssize_t plgfs_reg_iop_getxattr(struct dentry *d, const char *n,
+		void *v, size_t s)
+{
+	return plgfs_iop_getxattr(d, n, v, s, PLGFS_REG_IOP_GETXATTR);
+}
+
+static ssize_t plgfs_dir_iop_getxattr(struct dentry *d, const char *n,
+		void *v, size_t s)
+{
+	return plgfs_iop_getxattr(d, n, v, s, PLGFS_DIR_IOP_GETXATTR);
+}
+
+static ssize_t plgfs_iop_listxattr(struct dentry *d, char *l, size_t s,
+		int op_id)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	ssize_t rv;
+
+	sbi = plgfs_sbi(d->d_inode->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = op_id;
+	cont->op_args.i_listxattr.dentry = d;
+	cont->op_args.i_listxattr.list = l;
+	cont->op_args.i_listxattr.size = s;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+	
+	d = cont->op_args.i_listxattr.dentry;
+	l = cont->op_args.i_listxattr.list;
+	s = cont->op_args.i_listxattr.size;
+
+	cont->op_rv.rv_ssize = vfs_listxattr(plgfs_dh(d), l, s);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static ssize_t plgfs_lnk_iop_listxattr(struct dentry *d, char *l, size_t s)
+{
+	return plgfs_iop_listxattr(d, l, s, PLGFS_LNK_IOP_LISTXATTR);
+}
+
+static ssize_t plgfs_reg_iop_listxattr(struct dentry *d, char *l, size_t s)
+{
+	return plgfs_iop_listxattr(d, l, s, PLGFS_REG_IOP_LISTXATTR);
+}
+
+static ssize_t plgfs_dir_iop_listxattr(struct dentry *d, char *l, size_t s)
+{
+	return plgfs_iop_listxattr(d, l, s, PLGFS_DIR_IOP_LISTXATTR);
+}
+
+static int plgfs_iop_removexattr(struct dentry *d, const char *n, int op_id)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	int rv;
+
+	sbi = plgfs_sbi(d->d_inode->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = op_id;
+	cont->op_args.i_removexattr.dentry = d;
+	cont->op_args.i_removexattr.name = n;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+	
+	d = cont->op_args.i_removexattr.dentry;
+	n = cont->op_args.i_removexattr.name;
+
+	cont->op_rv.rv_int = vfs_removexattr(plgfs_dh(d), n);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static int plgfs_lnk_iop_removexattr(struct dentry *d, const char *n)
+{
+	return plgfs_iop_removexattr(d, n, PLGFS_LNK_IOP_REMOVEXATTR);
+}
+
+static int plgfs_reg_iop_removexattr(struct dentry *d, const char *n)
+{
+	return plgfs_iop_removexattr(d, n, PLGFS_REG_IOP_REMOVEXATTR);
+}
+
+static int plgfs_dir_iop_removexattr(struct dentry *d, const char *n)
+{
+	return plgfs_iop_removexattr(d, n, PLGFS_DIR_IOP_REMOVEXATTR);
+}
+
 static const struct inode_operations plgfs_lnk_iops= {
 	.setattr = plgfs_lnk_iop_setattr,
 	.getattr = plgfs_lnk_iop_getattr,
 	.readlink = plgfs_lnk_iop_readlink,
 	.follow_link = plgfs_lnk_iop_follow_link,
 	.put_link = plgfs_lnk_iop_put_link,
-	.permission = plgfs_lnk_iop_permission
+	.permission = plgfs_lnk_iop_permission,
+	.setxattr = plgfs_lnk_iop_setxattr,
+	.getxattr = plgfs_lnk_iop_getxattr,
+	.listxattr = plgfs_lnk_iop_listxattr,
+	.removexattr = plgfs_lnk_iop_removexattr
 };
 
 static const struct inode_operations plgfs_reg_iops= {
 	.setattr = plgfs_reg_iop_setattr,
 	.getattr = plgfs_reg_iop_getattr,
-	.permission = plgfs_reg_iop_permission
+	.permission = plgfs_reg_iop_permission,
+	.setxattr = plgfs_reg_iop_setxattr,
+	.getxattr = plgfs_reg_iop_getxattr,
+	.listxattr = plgfs_reg_iop_listxattr,
+	.removexattr = plgfs_reg_iop_removexattr
 };
 
 static const struct inode_operations plgfs_dir_iops= {
@@ -878,7 +1107,11 @@ static const struct inode_operations plgfs_dir_iops= {
 	.symlink = plgfs_dir_iop_symlink,
 	.mknod = plgfs_dir_iop_mknod,
 	.link = plgfs_dir_iop_link,
-	.permission = plgfs_dir_iop_permission
+	.permission = plgfs_dir_iop_permission,
+	.setxattr = plgfs_dir_iop_setxattr,
+	.getxattr = plgfs_dir_iop_getxattr,
+	.listxattr = plgfs_dir_iop_listxattr,
+	.removexattr = plgfs_dir_iop_removexattr
 };
 
 static int plgfs_inode_test(struct inode *i, void *ih)

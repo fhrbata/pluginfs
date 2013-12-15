@@ -47,6 +47,7 @@
 #include <linux/blk_types.h>
 #include <linux/aio.h>
 #include <linux/string.h>
+#include <linux/xattr.h>
 #include "pluginfs.h"
 
 #define PLGFS_VERSION "0.001"
