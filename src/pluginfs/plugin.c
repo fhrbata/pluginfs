@@ -70,7 +70,7 @@ int plgfs_register_plugin(struct plgfs_plugin *plg)
 	if (IS_ERR_OR_NULL(plg) || !plg->name || !plg->owner)
 		return -EINVAL;
 
-	if (plg->priority <= 0)
+	if (plg->priority < 0)
 		return -EINVAL;
 
 	mutex_lock(&plgfs_plg_list_mutex);
