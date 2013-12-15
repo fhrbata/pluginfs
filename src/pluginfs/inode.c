@@ -810,7 +810,7 @@ static int plgfs_iop_permission(struct inode *i, int mask, int op_id)
 	int rv;
 
 	sbi = plgfs_sbi(i->i_sb);
-	cont = plgfs_alloc_context(sbi);
+	cont = plgfs_alloc_context_atomic(sbi);
 	if (IS_ERR(cont))
 		return PTR_ERR(cont);
 
