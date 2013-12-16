@@ -547,6 +547,57 @@ static long plgfs_dir_fop_unlocked_ioctl(struct file *f, unsigned int cmd,
 			PLGFS_DIR_FOP_UNLOCKED_IOCTL);
 }
 
+static int plgfs_fop_flush(struct file *f, fl_owner_t id, int op_id)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct file *fh;
+	int rv;
+
+	sbi = plgfs_sbi(f->f_dentry->d_inode->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = op_id;
+	cont->op_args.f_flush.file = f;
+	cont->op_args.f_flush.id = id;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	f = cont->op_args.f_flush.file;
+	id = cont->op_args.f_flush.id;
+
+	fh = plgfs_fh(f);
+
+	cont->op_rv.rv_int = 0;
+
+	if (!fh->f_op || !fh->f_op->flush)
+		goto postcalls;
+
+	cont->op_rv.rv_int = fh->f_op->flush(fh, id);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static int plgfs_reg_fop_flush(struct file *f, fl_owner_t id)
+{
+	return plgfs_fop_flush(f, id, PLGFS_REG_FOP_FLUSH);
+}
+
+static int plgfs_dir_fop_flush(struct file *f, fl_owner_t id)
+{
+	return plgfs_fop_flush(f, id, PLGFS_DIR_FOP_FLUSH);
+}
+
 const struct file_operations plgfs_reg_fops = {
 	.open = plgfs_reg_fop_open,
 	.release = plgfs_reg_fop_release,
@@ -558,7 +609,8 @@ const struct file_operations plgfs_reg_fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = plgfs_reg_fop_compat_ioctl,
 #endif
-	.unlocked_ioctl = plgfs_reg_fop_unlocked_ioctl
+	.unlocked_ioctl = plgfs_reg_fop_unlocked_ioctl,
+	.flush = plgfs_reg_fop_flush
 };
 
 const struct file_operations plgfs_dir_fops = {
@@ -569,7 +621,8 @@ const struct file_operations plgfs_dir_fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = plgfs_dir_fop_compat_ioctl,
 #endif
-	.unlocked_ioctl = plgfs_dir_fop_unlocked_ioctl
+	.unlocked_ioctl = plgfs_dir_fop_unlocked_ioctl,
+	.flush = plgfs_dir_fop_flush
 };
 
 struct plgfs_file_info *plgfs_alloc_fi(struct file *f)

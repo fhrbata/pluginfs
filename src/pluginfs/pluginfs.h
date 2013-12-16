@@ -35,6 +35,7 @@ enum plgfs_op_id {
 	PLGFS_REG_FOP_MMAP,
 	PLGFS_REG_FOP_COMPAT_IOCTL,
 	PLGFS_REG_FOP_UNLOCKED_IOCTL,
+	PLGFS_REG_FOP_FLUSH,
 	PLGFS_REG_IOP_SETATTR,
 	PLGFS_REG_IOP_GETATTR,
 	PLGFS_REG_IOP_PERMISSION,
@@ -59,6 +60,7 @@ enum plgfs_op_id {
 	PLGFS_DIR_FOP_LLSEEK,
 	PLGFS_DIR_FOP_COMPAT_IOCTL,
 	PLGFS_DIR_FOP_UNLOCKED_IOCTL,
+	PLGFS_DIR_FOP_FLUSH,
 	PLGFS_DIR_IOP_LOOKUP,
 	PLGFS_DIR_IOP_CREATE,
 	PLGFS_DIR_IOP_RENAME,
@@ -155,6 +157,11 @@ union plgfs_op_args {
 		unsigned int cmd;
 		unsigned long arg;
 	} f_unlocked_ioctl;
+
+	struct {
+		struct file *file;
+		fl_owner_t id;
+	} f_flush;
 
 	struct {
 		struct dentry *dentry;
