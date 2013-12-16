@@ -33,6 +33,8 @@ enum plgfs_op_id {
 	PLGFS_REG_FOP_WRITE,
 	PLGFS_REG_FOP_FSYNC,
 	PLGFS_REG_FOP_MMAP,
+	PLGFS_REG_FOP_COMPAT_IOCTL,
+	PLGFS_REG_FOP_UNLOCKED_IOCTL,
 	PLGFS_REG_IOP_SETATTR,
 	PLGFS_REG_IOP_GETATTR,
 	PLGFS_REG_IOP_PERMISSION,
@@ -55,6 +57,8 @@ enum plgfs_op_id {
 	PLGFS_DIR_FOP_RELEASE,
 	PLGFS_DIR_FOP_ITERATE,
 	PLGFS_DIR_FOP_LLSEEK,
+	PLGFS_DIR_FOP_COMPAT_IOCTL,
+	PLGFS_DIR_FOP_UNLOCKED_IOCTL,
 	PLGFS_DIR_IOP_LOOKUP,
 	PLGFS_DIR_IOP_CREATE,
 	PLGFS_DIR_IOP_RENAME,
@@ -81,6 +85,7 @@ enum plgfs_op_call {
 
 union plgfs_op_rv {
 	int		rv_int;
+	long		rv_long;
 	ssize_t		rv_ssize;
 	unsigned int	rv_uint;
 	unsigned long	rv_ulong;
@@ -138,6 +143,18 @@ union plgfs_op_args {
 		struct file *file;
 		struct vm_area_struct *vma;
 	} f_mmap;
+
+	struct {
+		struct file *file;
+		unsigned int cmd;
+		unsigned long arg;
+	} f_compat_ioctl;
+
+	struct {
+		struct file *file;
+		unsigned int cmd;
+		unsigned long arg;
+	} f_unlocked_ioctl;
 
 	struct {
 		struct dentry *dentry;

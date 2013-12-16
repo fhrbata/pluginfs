@@ -431,6 +431,122 @@ postcalls:
 	return rv;
 }
 
+#ifdef CONFIG_COMPAT
+static long plgfs_fop_compat_ioctl(struct file *f, unsigned int cmd,
+		unsigned long arg, int op_id)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct file *fh;
+	long rv;
+
+	sbi = plgfs_sbi(f->f_dentry->d_inode->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = op_id;
+	cont->op_args.f_compat_ioctl.file = f;
+	cont->op_args.f_compat_ioctl.cmd = cmd;
+	cont->op_args.f_compat_ioctl.arg = arg;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	f = cont->op_args.f_compat_ioctl.file;
+	cmd = cont->op_args.f_compat_ioctl.cmd;
+	arg = cont->op_args.f_compat_ioctl.arg;
+
+	fh = plgfs_fh(f);
+
+	cont->op_rv.rv_long = -ENOIOCTLCMD;
+
+	if (!fh->f_op || !fh->f_op->compat_ioctl)
+		goto postcalls;
+
+	cont->op_rv.rv_long = fh->f_op->compat_ioctl(fh, cmd, arg);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_long;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+#endif
+
+static long plgfs_reg_fop_compat_ioctl(struct file *f, unsigned int cmd,
+		unsigned long arg)
+{
+	return plgfs_fop_compat_ioctl(f, cmd, arg, PLGFS_REG_FOP_COMPAT_IOCTL);
+}
+
+static long plgfs_dir_fop_compat_ioctl(struct file *f, unsigned int cmd,
+		unsigned long arg)
+{
+	return plgfs_fop_compat_ioctl(f, cmd, arg, PLGFS_DIR_FOP_COMPAT_IOCTL);
+}
+
+static long plgfs_fop_unlocked_ioctl(struct file *f, unsigned int cmd,
+		unsigned long arg, int op_id)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct file *fh;
+	long rv;
+
+	sbi = plgfs_sbi(f->f_dentry->d_inode->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = op_id;
+	cont->op_args.f_unlocked_ioctl.file = f;
+	cont->op_args.f_unlocked_ioctl.cmd = cmd;
+	cont->op_args.f_unlocked_ioctl.arg = arg;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	f = cont->op_args.f_unlocked_ioctl.file;
+	cmd = cont->op_args.f_unlocked_ioctl.cmd;
+	arg = cont->op_args.f_unlocked_ioctl.arg;
+
+	fh = plgfs_fh(f);
+
+	cont->op_rv.rv_long = -ENOTTY;
+
+	if (!fh->f_op || !fh->f_op->unlocked_ioctl)
+		goto postcalls;
+
+	cont->op_rv.rv_long = fh->f_op->unlocked_ioctl(fh, cmd, arg);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_long;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static long plgfs_reg_fop_unlocked_ioctl(struct file *f, unsigned int cmd,
+		unsigned long arg)
+{
+	return plgfs_fop_unlocked_ioctl(f, cmd, arg,
+			PLGFS_REG_FOP_UNLOCKED_IOCTL);
+}
+
+static long plgfs_dir_fop_unlocked_ioctl(struct file *f, unsigned int cmd,
+		unsigned long arg)
+{
+	return plgfs_fop_unlocked_ioctl(f, cmd, arg,
+			PLGFS_DIR_FOP_UNLOCKED_IOCTL);
+}
+
 const struct file_operations plgfs_reg_fops = {
 	.open = plgfs_reg_fop_open,
 	.release = plgfs_reg_fop_release,
@@ -438,14 +554,22 @@ const struct file_operations plgfs_reg_fops = {
 	.write = plgfs_reg_fop_write,
 	.llseek = plgfs_reg_fop_llseek,
 	.fsync = plgfs_reg_fop_fsync,
-	.mmap = plgfs_reg_fop_mmap
+	.mmap = plgfs_reg_fop_mmap,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = plgfs_reg_fop_compat_ioctl,
+#endif
+	.unlocked_ioctl = plgfs_reg_fop_unlocked_ioctl
 };
 
 const struct file_operations plgfs_dir_fops = {
 	.open = plgfs_dir_fop_open,
 	.release = plgfs_dir_fop_release,
 	.iterate = plgfs_dir_fop_iterate,
-	.llseek = plgfs_dir_fop_llseek
+	.llseek = plgfs_dir_fop_llseek,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = plgfs_dir_fop_compat_ioctl,
+#endif
+	.unlocked_ioctl = plgfs_dir_fop_unlocked_ioctl
 };
 
 struct plgfs_file_info *plgfs_alloc_fi(struct file *f)
