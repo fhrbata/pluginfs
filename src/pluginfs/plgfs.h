@@ -147,9 +147,6 @@ extern const struct dentry_operations plgfs_dops;
 
 struct plgfs_inode_info {
 	struct inode *inode_hidden;
-	struct file *file_hidden;
-	int file_hidden_cnt;
-	struct mutex file_hidden_mutex;
 	void *priv[0];
 };
 
@@ -167,6 +164,7 @@ extern struct plgfs_inode_info *plgfs_alloc_ii(struct plgfs_sb_info *sbi);
 extern struct inode *plgfs_iget(struct super_block *, unsigned long);
 
 struct plgfs_file_info {
+	struct file *file_hidden;
 	void *priv[0];
 };
 
@@ -179,7 +177,7 @@ static inline struct plgfs_file_info *plgfs_fi(struct file *f)
 
 static inline struct file *plgfs_fh(struct file *f)
 {
-	return plgfs_ii(f->f_dentry->d_inode)->file_hidden;
+	return plgfs_fi(f)->file_hidden;
 }
 
 extern const struct file_operations plgfs_reg_fops;

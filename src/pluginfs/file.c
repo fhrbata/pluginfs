@@ -19,58 +19,34 @@
 
 #include "plgfs.h"
 
-static int plgfs_get_fh(struct file *f)
+static struct file *plgfs_get_fh(struct file *f)
 {
-	struct plgfs_inode_info *ii;
-	struct file *fh;
 	struct path path;
 	int flags;
-
-	ii = plgfs_ii(f->f_dentry->d_inode);
-
-	mutex_lock(&ii->file_hidden_mutex);
-
-	if (ii->file_hidden_cnt)
-		goto out;
 
 	path.mnt = plgfs_sbi(f->f_path.mnt->mnt_sb)->path_hidden.mnt;
 	path.dentry = plgfs_dh(f->f_dentry);
 
-	flags = O_LARGEFILE;
-	flags |= IS_RDONLY(path.dentry->d_inode) ? O_RDONLY : O_RDWR; 
-	fh = dentry_open(&path, flags, current_cred());
-	if (IS_ERR(fh)) {
-		mutex_unlock(&ii->file_hidden_mutex);
-		return PTR_ERR(fh);
-	}
+	flags = f->f_flags;
 
-	ii->file_hidden = fh;
-out:
-	ii->file_hidden_cnt++;
+	if (f->f_mode == (FMODE_READ | FMODE_WRITE))
+		flags |= O_RDWR;
+	else if (f->f_mode == FMODE_READ)
+		flags |= O_RDONLY;
+	else if (f->f_mode == FMODE_WRITE)
+		flags |= O_WRONLY;
 
-	mutex_unlock(&ii->file_hidden_mutex);
-
-	return 0;
+	return dentry_open(&path, flags, current_cred());
 }
 
 static void plgfs_put_fh(struct file *f)
 {
-	struct plgfs_inode_info *ii;
+	struct file *fh;
 
-	ii = plgfs_ii(f->f_dentry->d_inode);
+	fh = plgfs_fh(f);
 
-	mutex_lock(&ii->file_hidden_mutex);
-
-	ii->file_hidden_cnt--;
-
-	if (ii->file_hidden_cnt) {
-		mutex_unlock(&ii->file_hidden_mutex);
-		return;
-	}
-
-	fput(ii->file_hidden);
-
-	mutex_unlock(&ii->file_hidden_mutex);
+	if (fh)
+		fput(fh);
 }
 
 static int plgfs_fop_open(struct inode *i, struct file *f, int op_id)
@@ -92,18 +68,17 @@ static int plgfs_fop_open(struct inode *i, struct file *f, int op_id)
 	if (!plgfs_precall_plgs(cont, sbi))
 		goto postcalls;
 
-	cont->op_rv.rv_int = plgfs_get_fh(f);
-	if (cont->op_rv.rv_int)
-		goto postcalls;
-
 	fi = plgfs_alloc_fi(f);
 	if (IS_ERR(fi)) {
-		plgfs_put_fh(f);
 		cont->op_rv.rv_int = PTR_ERR(fi);
 		goto postcalls;
 	}
 
 	f->private_data = fi;
+
+	fi->file_hidden = plgfs_get_fh(f);
+	if (IS_ERR(fi->file_hidden))
+		cont->op_rv.rv_int = PTR_ERR(fi->file_hidden);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
@@ -277,8 +252,14 @@ static ssize_t plgfs_reg_fop_read(struct file *f, char __user *buf, size_t count
 	if (!plgfs_precall_plgs(cont, sbi))
 		goto postcalls;
 
-	i = cont->op_args.f_read.file->f_dentry->d_inode;
-	fh = plgfs_ii(i)->file_hidden;
+	f = cont->op_args.f_read.file;
+	buf = cont->op_args.f_read.buf;
+	count = cont->op_args.f_read.count;
+	pos = cont->op_args.f_read.pos;
+	i = f->f_dentry->d_inode;
+
+	fh = plgfs_fh(f);
+
 	cont->op_rv.rv_ssize = kernel_read(fh,
 			*cont->op_args.f_read.pos,
 			cont->op_args.f_read.buf,
@@ -323,13 +304,15 @@ static ssize_t plgfs_reg_fop_write(struct file *f, const char __user *buf, size_
 	if (!plgfs_precall_plgs(cont, sbi))
 		goto postcalls;
 
-	i = cont->op_args.f_read.file->f_dentry->d_inode;
-	fh = plgfs_ii(i)->file_hidden;
+	f = cont->op_args.f_write.file;
+	buf = cont->op_args.f_write.buf;
+	count = cont->op_args.f_write.count;
+	pos = cont->op_args.f_write.pos;
+	i = f->f_dentry->d_inode;
 
-	cont->op_rv.rv_ssize = kernel_write(fh,
-			cont->op_args.f_write.buf,
-			cont->op_args.f_write.count,
-			*cont->op_args.f_write.pos);
+	fh = plgfs_fh(f);
+
+	cont->op_rv.rv_ssize = kernel_write(fh, buf, count, *pos);
 
 	if (cont->op_rv.rv_ssize < 0)
 		goto postcalls;

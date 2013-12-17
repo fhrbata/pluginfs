@@ -1189,7 +1189,5 @@ struct plgfs_inode_info *plgfs_alloc_ii(struct plgfs_sb_info *sbi)
 	if (!ii)
 		return ERR_PTR(-ENOMEM);
 
-	mutex_init(&ii->file_hidden_mutex);
-
 	return ii;
 }
