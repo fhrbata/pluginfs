@@ -48,6 +48,7 @@
 #include <linux/aio.h>
 #include <linux/string.h>
 #include <linux/xattr.h>
+#include <linux/statfs.h>
 #include "pluginfs.h"
 
 #define PLGFS_VERSION "0.001"

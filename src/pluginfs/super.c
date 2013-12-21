@@ -109,11 +109,57 @@ postcalls:
 	return rv;
 }
 
+static int plgfs_statfs(struct dentry *d, struct kstatfs *buf)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct dentry *dh;
+	int rv;
+
+	sbi = plgfs_sbi(d->d_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = PLGFS_SOP_STATFS;
+	cont->op_args.s_statfs.dentry = d;
+	cont->op_args.s_statfs.buf = buf;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+	
+	d = cont->op_args.s_statfs.dentry;
+	buf = cont->op_args.s_statfs.buf;
+
+	dh = plgfs_dh(d);
+
+	if (!dh->d_sb->s_op->statfs) {
+		cont->op_rv.rv_int = -ENOSYS;
+		goto postcalls;
+	}
+
+	cont->op_rv.rv_int = dh->d_sb->s_op->statfs(dh, buf);
+	if (cont->op_rv.rv_int)
+		goto postcalls;
+
+	buf->f_type = PLGFS_MAGIC; 
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
 static const struct super_operations plgfs_sops = {
 	.evict_inode = plgfs_evict_inode,
 	.put_super = plgfs_put_super,
 	.show_options = plgfs_show_options,
-	.remount_fs = plgfs_remount_fs
+	.remount_fs = plgfs_remount_fs,
+	.statfs = plgfs_statfs
 };
 
 static const char *plgfs_supported_fs_names[] = {

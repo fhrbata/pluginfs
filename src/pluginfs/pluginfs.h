@@ -77,6 +77,7 @@ enum plgfs_op_id {
 	PLGFS_LNK_IOP_LISTXATTR,
 	PLGFS_LNK_IOP_REMOVEXATTR,
 	PLGFS_SOP_REMOUNT_FS,
+	PLGFS_SOP_STATFS,
 	PLGFS_OP_NR
 };
 
@@ -291,6 +292,11 @@ union plgfs_op_args {
 		int *flags;
 		char *data;
 	} s_remount_fs;
+
+	struct {
+		struct dentry *dentry;
+		struct kstatfs *buf;
+	} s_statfs;
 };
 
 enum plgfs_rv {
