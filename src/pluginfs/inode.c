@@ -315,6 +315,7 @@ static int plgfs_dir_iop_unlink(struct inode *ip, struct dentry *d)
 	fsstack_copy_attr_times(ip, iph);
 	fsstack_copy_attr_times(d->d_inode, ih);
 	set_nlink(d->d_inode, ih->i_nlink);
+	d_drop(d);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
