@@ -163,7 +163,7 @@ static const struct super_operations plgfs_sops = {
 };
 
 static const char *plgfs_supported_fs_names[] = {
-	"ext2", "ext3", "ext4", "xfs", NULL
+	"ext2", "ext3", "ext4", "xfs", "vfat", "msdos", NULL
 };
 
 static struct vfsmount *plgfs_mount_hidden_known(int flags,
