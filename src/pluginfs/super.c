@@ -166,7 +166,28 @@ static const char *plgfs_supported_fs_names[] = {
 	"ext2", "ext3", "ext4", "xfs", NULL
 };
 
-static struct vfsmount *plgfs_mount_hidden(int flags,
+static struct vfsmount *plgfs_mount_hidden_known(int flags,
+		const char *dev_name, char *fstype, void *data)
+{
+	struct file_system_type *type;
+	struct vfsmount *mnt;
+
+	type = get_fs_type(fstype);
+	if (!type)
+		return ERR_PTR(-ENODEV);
+
+	mnt = vfs_kern_mount(type, flags | MS_KERNMOUNT, dev_name,
+			data);
+
+	module_put(type->owner);
+
+	if (!IS_ERR(mnt))
+		return mnt;
+
+	return ERR_PTR(-ENODEV);
+}
+
+static struct vfsmount *plgfs_mount_hidden_unknown(int flags,
 		const char *dev_name, void *data)
 {
 	struct file_system_type *type;
@@ -249,7 +270,13 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 		/* is there any way how to get the blkdev path */
 		snprintf(path, 16, "/dev/%s", sbi->pdev->gd->disk_name);
 
-		sbi->mnt_hidden = plgfs_mount_hidden(flags, path, cfg->opts);
+		if (cfg->fstype_str)
+			sbi->mnt_hidden = plgfs_mount_hidden_known(flags, path,
+					cfg->fstype_str, cfg->opts);
+		else
+			sbi->mnt_hidden = plgfs_mount_hidden_unknown(flags,
+					path, cfg->opts);
+
 		rv = PTR_ERR(sbi->mnt_hidden);
 		if (IS_ERR(sbi->mnt_hidden))
 			goto err;

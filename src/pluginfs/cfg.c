@@ -63,11 +63,17 @@ static int plgfs_parse_options(char *opts, struct plgfs_mnt_cfg *cfg)
 
 		switch (token) {
 			case opt_plgs:
-				cfg->plgs_str = args[0].from;
+				cfg->plgs_str = kstrdup(args[0].from,
+						GFP_KERNEL);
+				if (!cfg->plgs_str)
+					return -ENOMEM;
 				break;
 
 			case opt_fstype:
-				cfg->fstype_str = args[0].from;
+				cfg->fstype_str = kstrdup(args[0].from,
+						GFP_KERNEL);
+				if (!cfg->fstype_str)
+					return -ENOMEM;
 				break;
 
 			case opt_hidden:
@@ -225,6 +231,8 @@ void plgfs_put_cfg(struct plgfs_mnt_cfg *cfg)
 		plgfs_put_plgs(cfg->plgs, cfg->plgs_nr);
 
 	path_put(&cfg->path);
+	kfree(cfg->plgs_str);
+	kfree(cfg->fstype_str);
 	kfree(cfg->plgs);
 	kfree(cfg);
 }
