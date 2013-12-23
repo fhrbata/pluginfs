@@ -201,10 +201,63 @@ postcalls:
 	return rv;
 }
 
+static int plgfs_d_compare(const const struct dentry *dp,
+		const struct dentry *d, unsigned int len, const const char *str,
+		const struct qstr *name)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	const struct dentry *dh;
+	const struct dentry *dph;
+	int rv;
+
+	sbi = plgfs_sbi(d->d_sb);
+	cont = plgfs_alloc_context_atomic(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = PLGFS_DOP_D_COMPARE;
+	cont->op_args.d_compare.parent = dp;
+	cont->op_args.d_compare.dentry = d;
+	cont->op_args.d_compare.len = len;
+	cont->op_args.d_compare.str = str;
+	cont->op_args.d_compare.name = name;
+
+	if(!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	dp = cont->op_args.d_compare.parent;
+	d = cont->op_args.d_compare.dentry;
+	len = cont->op_args.d_compare.len;
+	str = cont->op_args.d_compare.str;
+	name = cont->op_args.d_compare.name;
+
+	dph = plgfs_dh((struct dentry *)dp);
+	dh = plgfs_dh((struct dentry *)d);
+
+	if (!(dh->d_flags & DCACHE_OP_COMPARE)) {
+		cont->op_rv.rv_int = strcmp(str, name->name);
+		goto postcalls;
+	}
+
+	cont->op_rv.rv_int = dh->d_op->d_compare(dph, dh, len, str,
+			name);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
 const struct dentry_operations plgfs_dops = {
 	.d_release = plgfs_d_release,
 	.d_revalidate = plgfs_d_revalidate,
-	.d_hash = plgfs_d_hash
+	.d_hash = plgfs_d_hash,
+	.d_compare = plgfs_d_compare,
 };
 
 struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *d)
