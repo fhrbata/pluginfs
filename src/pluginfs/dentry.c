@@ -162,9 +162,49 @@ postcalls:
 	return rv;
 }
 
+static int plgfs_d_hash(const struct dentry *d, struct qstr *s)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct dentry *dh;
+	int rv;
+
+	sbi = plgfs_sbi(d->d_sb);
+	cont = plgfs_alloc_context_atomic(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = PLGFS_DOP_D_HASH;
+	cont->op_args.d_hash.dentry = d;
+	cont->op_args.d_hash.str = s;
+
+	if(!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	d = cont->op_args.d_hash.dentry;
+	s = cont->op_args.d_hash.str;
+
+	dh = plgfs_dh((struct dentry *)d);
+	cont->op_rv.rv_int = 0;
+	if (!(dh->d_flags & DCACHE_OP_HASH))
+		goto postcalls;
+
+	cont->op_rv.rv_int = dh->d_op->d_hash(dh, s);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
 const struct dentry_operations plgfs_dops = {
 	.d_release = plgfs_d_release,
-	.d_revalidate = plgfs_d_revalidate
+	.d_revalidate = plgfs_d_revalidate,
+	.d_hash = plgfs_d_hash
 };
 
 struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *d)
