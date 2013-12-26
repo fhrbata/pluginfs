@@ -105,7 +105,7 @@ static int plgfs_test_super(struct super_block *sb, void *data)
 	cfg = (struct plgfs_mnt_cfg *)data;
 	sbi = plgfs_sbi(sb);
 
-	if (sbi->pdev->bdev_hidden != cfg->bdev)
+	if (!path_equal(&sbi->path_hidden, &cfg->path))
 		return 0;
 
 	cfg->flags |= PLGFS_OPT_DIFF_PLGS;
@@ -140,17 +140,17 @@ static struct dentry *plgfs_mount(struct file_system_type *fs_type, int flags,
 		return ERR_CAST(sb);
 	}
 
-	if (sb->s_root) {
-		plgfs_put_cfg(cfg);
-		return dget(sb->s_root); 
-	}
-
 	if (cfg->flags & PLGFS_OPT_DIFF_PLGS) {
 		pr_err("pluginfs: \"%s\" already mounted with different set of "
 				"plugins\n", dev_name);
 		deactivate_locked_super(sb);
 		plgfs_put_cfg(cfg);
 		return ERR_PTR(-EINVAL);
+	}
+
+	if (sb->s_root) {
+		plgfs_put_cfg(cfg);
+		return dget(sb->s_root); 
 	}
 
 	rv = plgfs_fill_super(sb, flags, cfg);
