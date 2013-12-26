@@ -105,7 +105,10 @@ static int plgfs_test_super(struct super_block *sb, void *data)
 	cfg = (struct plgfs_mnt_cfg *)data;
 	sbi = plgfs_sbi(sb);
 
-	if (!path_equal(&sbi->path_hidden, &cfg->path))
+	if (sbi->pdev && sbi->pdev->bdev_hidden != cfg->bdev)
+		return 0;
+
+	else if (!path_equal(&sbi->path_hidden, &cfg->path))
 		return 0;
 
 	cfg->flags |= PLGFS_OPT_DIFF_PLGS;
