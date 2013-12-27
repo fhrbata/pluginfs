@@ -320,6 +320,7 @@ union plgfs_op_args {
 	} s_put_super;
 
 	struct {
+		struct super_block *sb;
 		struct block_device *bdev;
 		char *opts_in;
 		char *opts_out;

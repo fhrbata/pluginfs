@@ -302,6 +302,7 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 	cfg->opts_orig[0] = 0;
 
 	cont->op_id = PLGFS_TOP_MOUNT;
+	cont->op_args.t_mount.sb = sb;
 	cont->op_args.t_mount.bdev = cfg->bdev;
 	cont->op_args.t_mount.opts_in = cfg->opts;
 	cont->op_args.t_mount.opts_out = cfg->opts_orig;
