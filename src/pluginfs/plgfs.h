@@ -66,6 +66,7 @@ struct plgfs_mnt_cfg {
 	char *fstype_str;
 	struct path path;
 	unsigned int flags;
+	char *opts_orig;
 	char opts[PAGE_SIZE];
 };
 
@@ -188,6 +189,8 @@ extern struct plgfs_plugin *plgfs_get_plg(const char *);
 extern inline void plgfs_put_plg(struct plgfs_plugin *);
 extern void plgfs_put_plgs(struct plgfs_plugin **, int);
 
+extern int plgfs_precall_plgs_cb(struct plgfs_context *cont,
+		struct plgfs_sb_info *sbi, void (*cb)(struct plgfs_context *));
 extern int plgfs_precall_plgs(struct plgfs_context *, struct plgfs_sb_info *);
 extern void plgfs_postcall_plgs(struct plgfs_context *, struct plgfs_sb_info *);
 

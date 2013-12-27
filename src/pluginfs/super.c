@@ -248,10 +248,26 @@ static struct plgfs_sb_info *plgfs_alloc_sbi(struct plgfs_mnt_cfg *cfg)
 	return sbi;
 }
 
+static void plgfs_cp_opts(struct plgfs_context *cont)
+{
+	char *opts_in;
+	char *opts_out;
+
+	if (!(cont->plg->flags & PLGFS_PLG_HAS_OPTS))
+		return;
+
+	opts_in = cont->op_args.t_mount.opts_in;
+	opts_out = cont->op_args.t_mount.opts_out;
+
+	memcpy(opts_in, opts_out, PAGE_SIZE);
+	opts_out[0] = 0;
+}
+
 int plgfs_fill_super(struct super_block *sb, int flags,
 		struct plgfs_mnt_cfg *cfg)
 {
 	struct plgfs_sb_info *sbi;
+	struct plgfs_context *cont;
 	struct dentry *drh; /* dentry root hidden */
 	struct inode *ir; /* inode root */
 	char path[16];
@@ -261,11 +277,28 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 	if (IS_ERR(sbi))
 		return PTR_ERR(sbi);
 
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont)) {
+		plgfs_free_sbi(sbi);
+		return PTR_ERR(cont);
+	}
+
+	cfg->opts_orig[0] = 0;
+
+	cont->op_id = PLGFS_TOP_MOUNT;
+	cont->op_args.t_mount.bdev = cfg->bdev;
+	cont->op_args.t_mount.opts_in = cfg->opts;
+	cont->op_args.t_mount.opts_out = cfg->opts_orig;
+
+	if (!plgfs_precall_plgs_cb(cont, sbi, plgfs_cp_opts))
+		goto postcalls;
+
 	if (cfg->bdev) {
 		sbi->pdev = plgfs_add_dev(cfg->bdev, cfg->mode);
-		rv = PTR_ERR(sbi->pdev);
-		if (IS_ERR(sbi->pdev))
-			goto err;
+		if (IS_ERR(sbi->pdev)) {
+			cont->op_rv.rv_int = PTR_ERR(sbi->pdev);
+			goto postcalls;
+		}
 
 		/* is there any way how to get the blkdev path */
 		snprintf(path, 16, "/dev/%s", sbi->pdev->gd->disk_name);
@@ -277,9 +310,10 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 			sbi->mnt_hidden = plgfs_mount_hidden_unknown(flags,
 					path, cfg->opts);
 
-		rv = PTR_ERR(sbi->mnt_hidden);
-		if (IS_ERR(sbi->mnt_hidden))
-			goto err;
+		if (IS_ERR(sbi->mnt_hidden)) {
+			cont->op_rv.rv_int = PTR_ERR(sbi->mnt_hidden);
+			goto postcalls;
+		}
 
 		sbi->path_hidden.dentry = sbi->mnt_hidden->mnt_root;
 		sbi->path_hidden.mnt = sbi->mnt_hidden;
@@ -293,36 +327,48 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 		drh = dget(sbi->path_hidden.dentry);
 	}
 
+	cont->op_args.t_mount.path = &sbi->path_hidden;
+
 	sb->s_fs_info = sbi;
 	sb->s_magic = PLGFS_MAGIC;
 	sb->s_d_op = &plgfs_dops;
 	sb->s_op = &plgfs_sops;
 
-	/* generic_shutdown_super does not call put_super unless the sb->root
-	   is set, so in case of error, we call it here manually till the
-	   sb->root is set */
-
 	ir = plgfs_iget(sb, (unsigned long)drh->d_inode);
-	rv = PTR_ERR(ir);
-	if (IS_ERR(ir))
-		goto err;
+	if (IS_ERR(ir)) {
+		cont->op_rv.rv_int = PTR_ERR(ir);
+		goto postcalls;
+	}
 
-	rv = -ENOMEM;
 	sb->s_root = d_make_root(ir);
-	if (!sb->s_root)
-		goto err;
+	if (!sb->s_root) {
+		cont->op_rv.rv_int = -ENOMEM;
+		goto postcalls;
+	}
 
 	sb->s_root->d_fsdata = plgfs_alloc_di(sb->s_root);
-	if (IS_ERR(sb->s_root->d_fsdata))
-		return PTR_ERR(sb->s_root->d_fsdata);
+	if (IS_ERR(sb->s_root->d_fsdata)) {
+		cont->op_rv.rv_int = PTR_ERR(sb->s_root->d_fsdata);
+		goto postcalls;
+	}
 
 	plgfs_di(sb->s_root)->dentry_hidden = drh;
 
 	sb->s_flags |= MS_ACTIVE;
 
-	return 0;
-err:
-	plgfs_free_sbi(sbi);
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+	plgfs_free_context(sbi, cont);
+
+	if (rv) {
+		/* generic_shutdown_super does not call put_super unless the
+		 * sb->root is set, so in case of error, we call it here
+		 * manually. */
+		plgfs_free_sbi(sbi);
+		sb->s_fs_info = NULL;
+	}
+
 	return rv;
 }
-

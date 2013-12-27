@@ -80,6 +80,7 @@ enum plgfs_op_id {
 	PLGFS_LNK_IOP_REMOVEXATTR,
 	PLGFS_SOP_REMOUNT_FS,
 	PLGFS_SOP_STATFS,
+	PLGFS_TOP_MOUNT,
 	PLGFS_OP_NR
 };
 
@@ -312,6 +313,13 @@ union plgfs_op_args {
 		struct dentry *dentry;
 		struct kstatfs *buf;
 	} s_statfs;
+
+	struct {
+		struct block_device *bdev;
+		char *opts_in;
+		char *opts_out;
+		struct path *path;
+	} t_mount;
 };
 
 enum plgfs_rv {
@@ -338,12 +346,15 @@ struct plgfs_op_cbs {
 	plgfs_op_cb post;
 };
 
+#define PLGFS_PLG_HAS_OPTS 0x01
+
 struct plgfs_plugin {
 	struct module *owner;
 	char *name;
 	int priority;
 	struct plgfs_op_cbs *cbs;
 	struct list_head list;
+	unsigned long flags;
 };
 
 extern int plgfs_register_plugin(struct plgfs_plugin *);

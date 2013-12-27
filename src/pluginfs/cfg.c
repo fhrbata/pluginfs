@@ -47,12 +47,9 @@ static int plgfs_parse_options(char *opts, struct plgfs_mnt_cfg *cfg)
 	char *opt;
 	int token;
 	substring_t args[MAX_OPT_ARGS];
-	char *data;
 	
 	if (!opts)
 		return 0;
-
-	data = opts;
 
 	while ((opt = strsep(&opts, ",")) != NULL) {
 
@@ -189,6 +186,8 @@ struct plgfs_mnt_cfg *plgfs_get_cfg(struct file_system_type *fs_type,
 
 	if (!dev_name)
 		return cfg;
+
+	cfg->opts_orig = data;
 
 	rv = kern_path(dev_name, LOOKUP_FOLLOW, &cfg->path);
 	if (rv)

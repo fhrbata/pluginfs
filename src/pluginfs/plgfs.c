@@ -19,7 +19,8 @@
 
 #include "plgfs.h"
 
-int plgfs_precall_plgs(struct plgfs_context *cont, struct plgfs_sb_info *sbi)
+int plgfs_precall_plgs_cb(struct plgfs_context *cont, struct plgfs_sb_info *sbi,
+		void (*cb)(struct plgfs_context *))
 {
 	struct plgfs_plugin *plg;
 	enum plgfs_rv rv;
@@ -42,11 +43,19 @@ int plgfs_precall_plgs(struct plgfs_context *cont, struct plgfs_sb_info *sbi)
 			cont->idx_end = idx;
 			return 0;
 		}
+
+		if (cb)
+			cb(cont);
 	}
 
 	cont->idx_end = idx - 1;
 
 	return 1;
+}
+
+int plgfs_precall_plgs(struct plgfs_context *cont, struct plgfs_sb_info *sbi)
+{
+	return plgfs_precall_plgs_cb(cont, sbi, NULL);
 }
 
 void plgfs_postcall_plgs(struct plgfs_context *cont, struct plgfs_sb_info *sbi)
