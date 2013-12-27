@@ -390,12 +390,18 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 		sbi->path_hidden.mnt = sbi->mnt_hidden;
 		path_get(&sbi->path_hidden);
 
-		drh = dget(sbi->mnt_hidden->mnt_root);
+		drh = sbi->mnt_hidden->mnt_root;
 
 	} else {
 		sbi->path_hidden = cfg->path;
 		path_get(&sbi->path_hidden);
-		drh = dget(sbi->path_hidden.dentry);
+		drh = sbi->path_hidden.dentry;
+	}
+
+	if (sbi->path_hidden.dentry->d_sb->s_magic == PLGFS_MAGIC) {
+		pr_err("pluginfs: pluginfs cannot be mounted atop itself\n");
+		cont->op_rv.rv_int = -EINVAL;
+		goto postcalls;
 	}
 
 	cont->op_args.t_mount.path = &sbi->path_hidden;
@@ -418,7 +424,7 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 		goto postcalls;
 	}
 
-	plgfs_di(sb->s_root)->dentry_hidden = drh;
+	plgfs_di(sb->s_root)->dentry_hidden = dget(drh);
 
 	sb->s_flags |= MS_ACTIVE;
 
