@@ -54,7 +54,23 @@ static void plgfs_free_sbi(struct plgfs_sb_info *sbi)
 
 static void plgfs_put_super(struct super_block *sb)
 {
-	plgfs_free_sbi(plgfs_sbi(sb));
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+
+	sbi = plgfs_sbi(sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont)) {
+		pr_err("pluginfs: cannot alloc context for put super, no"
+				"plugins will be called\n");
+		goto err;
+	}
+
+	cont->op_id = PLGFS_SOP_PUT_SUPER,
+	cont->op_args.s_put_super.sb = sb;
+	plgfs_precall_plgs(cont, sbi);
+	plgfs_free_context(sbi, cont);
+err:
+	plgfs_free_sbi(sbi);
 }
 
 static int plgfs_remount_fs(struct super_block *sb, int *f, char *d)

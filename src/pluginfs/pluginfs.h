@@ -80,6 +80,7 @@ enum plgfs_op_id {
 	PLGFS_LNK_IOP_REMOVEXATTR,
 	PLGFS_SOP_REMOUNT_FS,
 	PLGFS_SOP_STATFS,
+	PLGFS_SOP_PUT_SUPER,
 	PLGFS_TOP_MOUNT,
 	PLGFS_OP_NR
 };
@@ -313,6 +314,10 @@ union plgfs_op_args {
 		struct dentry *dentry;
 		struct kstatfs *buf;
 	} s_statfs;
+
+	struct {
+		struct super_block *sb;
+	} s_put_super;
 
 	struct {
 		struct block_device *bdev;
