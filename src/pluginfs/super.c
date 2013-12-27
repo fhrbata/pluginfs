@@ -293,6 +293,11 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 	if (IS_ERR(sbi))
 		return PTR_ERR(sbi);
 
+	sb->s_fs_info = sbi;
+	sb->s_magic = PLGFS_MAGIC;
+	sb->s_d_op = &plgfs_dops;
+	sb->s_op = &plgfs_sops;
+
 	cont = plgfs_alloc_context(sbi);
 	if (IS_ERR(cont)) {
 		plgfs_free_sbi(sbi);
@@ -345,11 +350,6 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 	}
 
 	cont->op_args.t_mount.path = &sbi->path_hidden;
-
-	sb->s_fs_info = sbi;
-	sb->s_magic = PLGFS_MAGIC;
-	sb->s_d_op = &plgfs_dops;
-	sb->s_op = &plgfs_sops;
 
 	ir = plgfs_iget(sb, (unsigned long)drh->d_inode);
 	if (IS_ERR(ir)) {
