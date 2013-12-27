@@ -18,6 +18,10 @@
  */
 
 #include <pluginfs.h>
+#include <linux/parser.h>
+#include <linux/blkdev.h>
+#include <linux/genhd.h>
+#include <linux/seq_file.h>
 
 static enum plgfs_rv miniplg_open(struct plgfs_context *cont)
 {
@@ -61,7 +65,125 @@ static enum plgfs_rv miniplg_open(struct plgfs_context *cont)
 	return PLGFS_CONTINUE;
 }
 
+enum plgfs_options {
+	opt_miniplg,
+	opt_unknown
+};
+
+static match_table_t miniplg_tokens = {
+	{opt_miniplg, "miniplg=%s"},
+	{opt_unknown, NULL}
+};
+
+static enum plgfs_rv miniplg_pre_mount(struct plgfs_context *cont)
+{
+	char *opt;
+	int token;
+	substring_t args[MAX_OPT_ARGS];
+	char *opts_in;
+	char *opts_out;
+	char *miniplg_opt;
+
+	miniplg_opt = NULL;
+	opts_in = cont->op_args.t_mount.opts_in;
+	opts_out = cont->op_args.t_mount.opts_out;
+
+	if (cont->op_args.t_mount.bdev)
+		pr_info("miniplg: pre mount: using block device %s\n",
+				cont->op_args.t_mount.bdev->bd_disk->disk_name);
+
+	if (!opts_in)
+		return PLGFS_CONTINUE;
+
+	while ((opt = strsep(&opts_in, ",")) != NULL) {
+
+		if (!*opt)
+			continue;
+
+		token = match_token(opt, miniplg_tokens, args);
+
+		switch (token) {
+			case opt_miniplg:
+				miniplg_opt = kstrdup(args[0].from, GFP_KERNEL);
+				if (!miniplg_opt) {
+					cont->op_rv.rv_int = -ENOMEM;
+					return PLGFS_STOP;
+				}
+
+				pr_info("miniplg: pre mount: option "
+						"miniplg=%s\n", miniplg_opt);
+				break;
+
+			case opt_unknown:
+				plgfs_pass_on_option(opt, opts_out);
+				break;
+		}
+	}
+
+	if (!miniplg_opt)
+		return PLGFS_CONTINUE;
+
+	plgfs_set_sb_priv(cont->op_args.t_mount.sb, cont->plg_id, miniplg_opt);
+
+	return PLGFS_CONTINUE;
+}
+
+static enum plgfs_rv miniplg_post_mount(struct plgfs_context *cont)
+{
+	char *miniplg_opt;
+	struct super_block *sb;
+	struct path *path;
+
+	sb = cont->op_args.t_mount.sb;
+	path = cont->op_args.t_mount.path;
+
+	if (cont->op_rv.rv_int) {
+		miniplg_opt = plgfs_get_sb_priv(sb, cont->plg_id);
+		plgfs_set_sb_priv(sb, cont->plg_id, NULL);
+		kfree(miniplg_opt);
+		return PLGFS_CONTINUE;
+	}
+
+	pr_info("miniplg: post mount: file system type: %s\n",
+			path->dentry->d_sb->s_type->name);
+
+	return PLGFS_CONTINUE;
+}
+
+static enum plgfs_rv miniplg_pre_put_super(struct plgfs_context *cont)
+{
+	char *miniplg_opt;
+	struct super_block *sb;
+
+	sb = cont->op_args.s_put_super.sb;
+	miniplg_opt = plgfs_get_sb_priv(sb, cont->plg_id);
+	kfree(miniplg_opt);
+	return PLGFS_CONTINUE;
+}
+
+static enum plgfs_rv miniplg_pre_show_options(struct plgfs_context *cont)
+{
+	struct super_block *sb;
+	struct seq_file *seq; 
+	char *miniplg_opt;
+
+	seq = cont->op_args.s_show_options.seq;
+	sb = cont->op_args.s_show_options.dentry->d_sb;
+
+	miniplg_opt = plgfs_get_sb_priv(sb, cont->plg_id);
+	if (!miniplg_opt)
+		return PLGFS_CONTINUE;
+
+	seq_printf(seq, ",miniplg=%s", miniplg_opt);
+
+	return PLGFS_CONTINUE;
+}
+
 static struct plgfs_op_cbs miniplg_cbs[PLGFS_OP_NR] = {
+	[PLGFS_TOP_MOUNT].pre = miniplg_pre_mount,
+	[PLGFS_TOP_MOUNT].post = miniplg_post_mount,
+	[PLGFS_SOP_PUT_SUPER].pre = miniplg_pre_put_super,
+	[PLGFS_SOP_SHOW_OPTIONS].pre = miniplg_pre_show_options,
 	[PLGFS_REG_FOP_OPEN].pre = miniplg_open,
 	[PLGFS_REG_FOP_OPEN].post = miniplg_open,
 	[PLGFS_DIR_FOP_OPEN].pre = miniplg_open,
@@ -72,7 +194,8 @@ static struct plgfs_plugin miniplg = {
 	.owner = THIS_MODULE,
 	.priority = 1,
 	.name = "miniplg",
-	.cbs = miniplg_cbs
+	.cbs = miniplg_cbs,
+	.flags = PLGFS_PLG_HAS_OPTS
 };
 
 static int __init miniplg_init(void)
