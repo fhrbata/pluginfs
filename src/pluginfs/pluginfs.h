@@ -81,6 +81,7 @@ enum plgfs_op_id {
 	PLGFS_SOP_REMOUNT_FS,
 	PLGFS_SOP_STATFS,
 	PLGFS_SOP_PUT_SUPER,
+	PLGFS_SOP_SHOW_OPTIONS,
 	PLGFS_TOP_MOUNT,
 	PLGFS_OP_NR
 };
@@ -318,6 +319,11 @@ union plgfs_op_args {
 	struct {
 		struct super_block *sb;
 	} s_put_super;
+
+	struct {
+		struct seq_file *seq;
+		struct dentry *dentry;
+	} s_show_options;
 
 	struct {
 		struct super_block *sb;

@@ -236,30 +236,4 @@ void plgfs_put_cfg(struct plgfs_mnt_cfg *cfg)
 	kfree(cfg);
 }
 
-int plgfs_show_options(struct seq_file *seq, struct dentry *d)
-{
-	struct super_block *sbh;
-	struct file_system_type *fsth;
-	struct plgfs_sb_info *sbi;
-	int i;
-	int rv = 0;
-
-	sbh = plgfs_dh(d)->d_sb;
-	sbi = plgfs_sbi(d->d_sb);
-	fsth = sbh->s_type;
-
-	seq_printf(seq, ",fstype=%s", fsth->name);
-
-	seq_printf(seq, ",plugins=%s", sbi->plgs[0]->name);
-
-	for (i = 1; i < sbi->plgs_nr; i++) {
-		seq_printf(seq, ":%s", sbi->plgs[i]->name);
-	}
-
-	if (sbh->s_op->show_options)
-		rv = sbh->s_op->show_options(seq, plgfs_dh(d));
-
-	return rv;
-}
-
 EXPORT_SYMBOL(plgfs_pass_on_option);

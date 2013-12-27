@@ -198,8 +198,6 @@ extern struct plgfs_context *plgfs_alloc_context_atomic(struct plgfs_sb_info *);
 extern struct plgfs_context *plgfs_alloc_context(struct plgfs_sb_info *);
 extern void plgfs_free_context(struct plgfs_sb_info *, struct plgfs_context *);
 
-extern int plgfs_show_options(struct seq_file *, struct dentry *);
-
 extern struct file_system_type plgfs_type;
 
 extern int plgfs_major;

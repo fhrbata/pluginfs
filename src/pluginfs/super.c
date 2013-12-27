@@ -170,6 +170,55 @@ postcalls:
 	return rv;
 }
 
+static int plgfs_show_options(struct seq_file *seq, struct dentry *d)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct super_block *sbh;
+	struct file_system_type *fsth;
+	int i;
+	int rv = 0;
+
+	sbi = plgfs_sbi(d->d_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return PTR_ERR(cont);
+
+	cont->op_id = PLGFS_SOP_SHOW_OPTIONS;
+	cont->op_args.s_show_options.seq = seq;
+	cont->op_args.s_show_options.dentry = d;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	seq = cont->op_args.s_show_options.seq;
+	d = cont->op_args.s_show_options.dentry;
+
+	sbh = plgfs_dh(d)->d_sb;
+	sbi = plgfs_sbi(d->d_sb);
+	fsth = sbh->s_type;
+
+	seq_printf(seq, ",fstype=%s", fsth->name);
+
+	seq_printf(seq, ",plugins=%s", sbi->plgs[0]->name);
+
+	for (i = 1; i < sbi->plgs_nr; i++) {
+		seq_printf(seq, ":%s", sbi->plgs[i]->name);
+	}
+
+	if (sbh->s_op->show_options)
+		rv = sbh->s_op->show_options(seq, plgfs_dh(d));
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_int;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
 static const struct super_operations plgfs_sops = {
 	.evict_inode = plgfs_evict_inode,
 	.put_super = plgfs_put_super,
