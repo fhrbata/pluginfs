@@ -201,9 +201,8 @@ postcalls:
 	return rv;
 }
 
-static int plgfs_d_compare(const const struct dentry *dp,
-		const struct dentry *d, unsigned int len, const const char *str,
-		const struct qstr *name)
+static int plgfs_d_compare(const struct dentry *dp, const struct dentry *d,
+		unsigned int len, const char *str, const struct qstr *name)
 {
 	struct plgfs_context *cont;
 	struct plgfs_sb_info *sbi;
@@ -236,11 +235,16 @@ static int plgfs_d_compare(const const struct dentry *dp,
 	dh = plgfs_dh((struct dentry *)d);
 
 	if (!(dh->d_flags & DCACHE_OP_COMPARE)) {
-		cont->op_rv.rv_int = strcmp(str, name->name);
+		cont->op_rv.rv_int = 1;
+
+		if (len != name->len)
+			goto postcalls;
+
+		cont->op_rv.rv_int = strncmp(str, name->name, len);
 		goto postcalls;
 	}
 
-	cont->op_rv.rv_int = dh->d_op->d_compare(dph, dh, len, str,
+	cont->op_rv.rv_int = dph->d_op->d_compare(dph, dh, len, str,
 			name);
 
 postcalls:
