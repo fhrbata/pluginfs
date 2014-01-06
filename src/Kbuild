@@ -1,1 +1,1 @@
-obj-m := pluginfs/ miniplg/ multiplg/ nullplg/
+obj-m := pluginfs/ miniplg/ multiplg/ nullplg/ avplg/
