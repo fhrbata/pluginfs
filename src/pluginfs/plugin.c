@@ -148,42 +148,42 @@ void plgfs_put_plgs(struct plgfs_plugin **plgs, int nr)
 	}
 }
 
-inline void *plgfs_get_sb_priv(struct super_block *sb, int plg_sb_id)
+void *plgfs_get_sb_priv(struct super_block *sb, int plg_sb_id)
 {
 	return plgfs_sbi(sb)->priv[plg_sb_id];
 }
 
-inline void plgfs_set_sb_priv(struct super_block *sb, int plg_sb_id, void *data)
+void plgfs_set_sb_priv(struct super_block *sb, int plg_sb_id, void *data)
 {
 	plgfs_sbi(sb)->priv[plg_sb_id] = data;
 }
 
-inline void *plgfs_get_file_priv(struct file *f, int plg_sb_id)
+void *plgfs_get_file_priv(struct file *f, int plg_sb_id)
 {
 	return plgfs_fi(f)->priv[plg_sb_id];
 }
 
-inline void plgfs_set_file_priv(struct file *f, int plg_sb_id, void *data)
+void plgfs_set_file_priv(struct file *f, int plg_sb_id, void *data)
 {
 	plgfs_fi(f)->priv[plg_sb_id] = data;
 }
 
-inline void *plgfs_get_dentry_priv(struct dentry *d, int plg_sb_id)
+void *plgfs_get_dentry_priv(struct dentry *d, int plg_sb_id)
 {
 	return plgfs_di(d)->priv[plg_sb_id];
 }
 
-inline void plgfs_set_dentry_priv(struct dentry *d, int plg_sb_id, void *data)
+void plgfs_set_dentry_priv(struct dentry *d, int plg_sb_id, void *data)
 {
 	plgfs_di(d)->priv[plg_sb_id] = data;
 }
 
-inline void *plgfs_get_inode_priv(struct inode *i, int plg_sb_id)
+void *plgfs_get_inode_priv(struct inode *i, int plg_sb_id)
 {
 	return plgfs_ii(i)->priv[plg_sb_id];
 }
 
-inline void plgfs_set_inode_priv(struct inode *i, int plg_sb_id, void *data)
+void plgfs_set_inode_priv(struct inode *i, int plg_sb_id, void *data)
 {
 	plgfs_ii(i)->priv[plg_sb_id] = data;
 }
