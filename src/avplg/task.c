@@ -123,7 +123,7 @@ int avplg_task_rem(pid_t tgid)
 
 	spin_lock(&avplg_task_lock);
 
-	found = avplg_task_find(tgid);
+	found = avplg_task_find_nolock(tgid);
 	if (!found) {
 		spin_unlock(&avplg_task_lock);
 		return -EINVAL;
