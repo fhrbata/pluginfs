@@ -39,6 +39,10 @@ help:
 	@echo "libs-install      - install libs"
 	@echo "libs-uninstall    - uninstall libs"
 	@echo "libs-clean        - delete libs"
+	@echo "utils             - build utils"
+	@echo "utils-install     - install utils"
+	@echo "utils-uninstall   - uninstall utils"
+	@echo "utils-clean       - delete utils"
 
 modules:
 	$(MAKE) -C $(KDIR)/build M=$(PWD) EXTRA_CFLAGS=$(MINC) modules
@@ -57,7 +61,7 @@ modules-uninstall:
 libs:
 	$(MAKE) -C libav
 
-libs-install:
+libs-install: libs
 	$(MAKE) -C libav install
 
 libs-uninstall:
@@ -65,6 +69,18 @@ libs-uninstall:
 
 libs-clean:
 	$(MAKE) -C libav clean
+
+utils: libs
+	$(MAKE) -C avtest
+
+utils-install: utils
+	$(MAKE) -C avtest install
+
+utils-uninstall:
+	$(MAKE) -C avtest uninstall
+
+utils-clean:
+	$(MAKE) -C avtest clean
 
 cscope:
 	find . -type f -iregex '^.*\.\(c\|h\)' > cscope.files
@@ -83,12 +99,12 @@ tags: cscope ctags
 
 tags-clean: cscope-clean ctags-clean
 
-all: modules libs tags
+all: modules libs utils tags
 
-clean: modules-clean libs-clean tags-clean
+clean: modules-clean libs-clean utils-clean tags-clean
 
-install: modules-install libs-install
+install: modules-install libs-install utils-install
 
-uninstall: modules-uninstall libs-uninstall
+uninstall: modules-uninstall libs-uninstall utils-uninstall
 
 endif
