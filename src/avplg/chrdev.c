@@ -96,12 +96,12 @@ static ssize_t avplg_chrdev_read(struct file *file, char __user *buf,
 	if (rv)
 		goto error;
 
-	rv = len = avplg_event2buf(buf, size, event);
-	if (rv < 0)
-		goto error;
-
 	rv = avplg_task_add_event(event);
 	if (rv)
+		goto error;
+
+	rv = len = avplg_event2buf(buf, size, event);
+	if (rv < 0)
 		goto error;
 
 	fd_install(event->fd, event->file);
