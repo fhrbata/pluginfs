@@ -34,6 +34,7 @@ static struct avplg_event *avplg_event_alloc(struct file *file, int type)
 		return ERR_PTR(-ENOMEM);
 
 	INIT_LIST_HEAD(&event->list);
+	INIT_LIST_HEAD(&event->task_event);
 	atomic_set(&event->count, 1);
 	init_completion(&event->wait);
 	event->type = type;
