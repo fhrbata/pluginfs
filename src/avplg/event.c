@@ -281,7 +281,7 @@ struct avplg_event *avplg_buf2event(const char __user *buf, size_t size)
 	struct avplg_event *event;
 	struct avplg_task *task;
 	char cmd[256];
-	int id;
+	unsigned long id;
 	int result;
 	int rv;
 	int ver;
@@ -292,7 +292,7 @@ struct avplg_event *avplg_buf2event(const char __user *buf, size_t size)
 	if (copy_from_user(cmd, buf, size))
 		return ERR_PTR(-EFAULT);
 
-	rv = sscanf(buf, "ver:%u,id:%d,res:%d", &ver, &id, &result);
+	rv = sscanf(buf, "ver:%u,id:%lu,res:%d", &ver, &id, &result);
 	if (rv != 3)
 		return ERR_PTR(-EINVAL);
 

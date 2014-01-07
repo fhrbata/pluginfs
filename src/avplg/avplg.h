@@ -95,7 +95,7 @@ extern int avplg_task_allow(pid_t tgid);
 extern int avplg_task_add_event(struct avplg_event *event);
 extern int avplg_task_rem_event(struct avplg_event *event);
 extern struct avplg_event *avplg_task_pop_event(struct avplg_task *task,
-		int id);
+		unsigned long id);
 extern int avplg_task_empty(void);
 
 struct avplg_trusted {

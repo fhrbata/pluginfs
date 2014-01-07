@@ -220,7 +220,8 @@ int avplg_task_rem_event(struct avplg_event *event)
 	return 0;
 }
 
-struct avplg_event *avplg_task_pop_event(struct avplg_task *task, int id)
+struct avplg_event *avplg_task_pop_event(struct avplg_task *task,
+		unsigned long id)
 {
 	struct avplg_event *event;
 	struct avplg_event *found;
