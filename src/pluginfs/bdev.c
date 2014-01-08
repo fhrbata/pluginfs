@@ -56,9 +56,8 @@ static void plgfs_end_bio(struct bio *bioh, int err)
 	struct bio *bio;
 
 	bio = (struct bio *)bioh->bi_private;
-	kfree(bioh);
-
 	bio_endio(bio, err);
+	bio_put(bioh);
 }
 
 static void plgfs_make_request(struct request_queue *q, struct bio *bio)
