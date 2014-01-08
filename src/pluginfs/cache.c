@@ -22,6 +22,12 @@
 static DEFINE_MUTEX(plgfs_cache_mutex);
 static LIST_HEAD(plgfs_cache_list);
 
+static void plgfs_inode_info_init_once(void *data)
+{
+	struct plgfs_inode_info *ii = (struct plgfs_inode_info *)data;
+	inode_init_once(&ii->vfs_inode);
+}
+
 static struct kmem_cache *plgfs_cache_create(const char *fmt, int plg_nr,
 		size_t size, size_t align, unsigned long flags,
 		void (*ctor)(void *))
@@ -70,7 +76,7 @@ static struct plgfs_cache *plgfs_cache_alloc(int plg_nr)
 
 	cache->ii_cache = plgfs_cache_create("plgfs_inode_info_cache_nr%d",
 			plg_nr, sizeof(struct plgfs_inode_info) + size, 0, 0,
-			NULL);
+			plgfs_inode_info_init_once);
 
 	if (!cache->ii_cache)
 		goto err_free_di_cache;
@@ -144,6 +150,8 @@ void plgfs_cache_put(struct plgfs_cache *cache)
 	}
 
 	list_del(&cache->list);
+
+	rcu_barrier();
 
 	kmem_cache_destroy(cache->fi_cache);
 	kmem_cache_destroy(cache->di_cache);

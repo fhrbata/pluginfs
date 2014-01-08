@@ -82,6 +82,8 @@ enum plgfs_op_id {
 	PLGFS_SOP_STATFS,
 	PLGFS_SOP_PUT_SUPER,
 	PLGFS_SOP_SHOW_OPTIONS,
+	PLGFS_SOP_ALLOC_INODE,
+	PLGFS_SOP_DESTROY_INODE,
 	PLGFS_TOP_MOUNT,
 	PLGFS_OP_NR
 };
@@ -99,6 +101,7 @@ union plgfs_op_rv {
 	unsigned long	rv_ulong;
 	loff_t		rv_loff;
 	struct dentry	*rv_dentry;
+	struct inode	*rv_inode;
 	sector_t	rv_sector;
 	struct page	*rv_page;
 	void		*rv_void;
@@ -324,6 +327,14 @@ union plgfs_op_args {
 		struct seq_file *seq;
 		struct dentry *dentry;
 	} s_show_options;
+
+	struct {
+		struct super_block *sb;
+	} s_alloc_inode;
+
+	struct {
+		struct inode *inode;
+	} s_destroy_inode;
 
 	struct {
 		struct super_block *sb;

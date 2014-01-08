@@ -148,13 +148,14 @@ extern struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *);
 extern const struct dentry_operations plgfs_dops;
 
 struct plgfs_inode_info {
+	struct inode vfs_inode;
 	struct inode *inode_hidden;
 	void *priv[0];
 };
 
 static inline struct plgfs_inode_info *plgfs_ii(struct inode *i)
 {
-	return i->i_private;
+	return container_of(i, struct plgfs_inode_info, vfs_inode);
 }
 
 static inline struct inode *plgfs_ih(struct inode *i)

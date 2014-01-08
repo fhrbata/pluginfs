@@ -1119,6 +1119,7 @@ static int plgfs_inode_test(struct inode *i, void *ih)
 {
 	if (plgfs_ih(i) == (struct inode *)ih)
 		return 1;
+
 	return 0;
 }
 
@@ -1128,10 +1129,7 @@ static int plgfs_inode_set(struct inode *i, void *data)
 	struct inode *ih;
 
 	ih = (struct inode *)data;
-
-	ii = plgfs_alloc_ii(plgfs_sbi(i->i_sb));
-	if (IS_ERR(ii))
-		return PTR_ERR(ii);
+	ii = plgfs_ii(i);
 
 	i->i_private = ii;
 	i->i_ino = ih->i_ino;
@@ -1186,7 +1184,7 @@ struct plgfs_inode_info *plgfs_alloc_ii(struct plgfs_sb_info *sbi)
 {	
 	struct plgfs_inode_info *ii;
 
-	ii = kmem_cache_zalloc(sbi->cache->ii_cache, GFP_KERNEL);
+	ii = kmem_cache_alloc(sbi->cache->ii_cache, GFP_KERNEL);
 	if (!ii)
 		return ERR_PTR(-ENOMEM);
 

@@ -21,13 +21,12 @@
 
 static void plgfs_evict_inode(struct inode *i)
 {
-	iput(plgfs_ih(i));
-	kmem_cache_free(plgfs_sbi(i->i_sb)->cache->ii_cache, plgfs_ii(i));
-
 	if (i->i_data.nrpages)
 		truncate_inode_pages(&i->i_data, 0);
 
 	clear_inode(i);
+
+	iput(plgfs_ih(i));
 }
 
 static void plgfs_free_sbi(struct plgfs_sb_info *sbi)
@@ -219,12 +218,95 @@ postcalls:
 	return rv;
 }
 
+static struct inode *plgfs_alloc_inode(struct super_block *sb)
+{
+	struct plgfs_inode_info *ii;
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+	struct inode *rv;
+
+	sbi = plgfs_sbi(sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont))
+		return ERR_CAST(cont);
+
+	cont->op_id = PLGFS_SOP_ALLOC_INODE;
+	cont->op_args.s_alloc_inode.sb = sb;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	sb = cont->op_args.s_alloc_inode.sb;
+	sbi = plgfs_sbi(sb);
+
+	cont->op_rv.rv_inode = NULL;
+	ii = plgfs_alloc_ii(sbi);
+	if (IS_ERR(ii))
+		goto postcalls;
+
+	cont->op_rv.rv_inode = &ii->vfs_inode;
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	rv = cont->op_rv.rv_inode;
+
+	plgfs_free_context(sbi, cont);
+
+	return rv;
+}
+
+static void plgfs_i_callback(struct rcu_head *head)
+{
+	struct inode *i;
+	struct plgfs_sb_info *sbi;
+	struct plgfs_inode_info *ii;
+
+	i = container_of(head, struct inode, i_rcu);
+	ii = plgfs_ii(i);
+	sbi = plgfs_sbi(i->i_sb);
+
+	kmem_cache_free(sbi->cache->ii_cache, ii);
+}
+
+static void plgfs_destroy_inode(struct inode *i)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+
+	sbi = plgfs_sbi(i->i_sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont)) {
+		kmem_cache_free(sbi->cache->ii_cache, plgfs_ii(i));
+		pr_err("pluginfs: cannot alloc context for destroy inode, no"
+				"plugins will be called\n");
+		return;
+	}
+
+	cont->op_id = PLGFS_SOP_DESTROY_INODE;
+	cont->op_args.s_destroy_inode.inode = i;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	i = cont->op_args.s_destroy_inode.inode;
+
+	call_rcu(&i->i_rcu, plgfs_i_callback);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	plgfs_free_context(sbi, cont);
+}
+
 static const struct super_operations plgfs_sops = {
 	.evict_inode = plgfs_evict_inode,
 	.put_super = plgfs_put_super,
 	.show_options = plgfs_show_options,
 	.remount_fs = plgfs_remount_fs,
-	.statfs = plgfs_statfs
+	.statfs = plgfs_statfs,
+	.alloc_inode = plgfs_alloc_inode,
+	.destroy_inode = plgfs_destroy_inode
 };
 
 static const char *plgfs_supported_fs_names[] = {
