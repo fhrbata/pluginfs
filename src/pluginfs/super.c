@@ -72,6 +72,30 @@ err:
 	plgfs_free_sbi(sbi);
 }
 
+static void plgfs_cp_opts(struct plgfs_context *cont)
+{
+	char *opts_in;
+	char *opts_out;
+
+	if (!(cont->plg->flags & PLGFS_PLG_HAS_OPTS))
+		return;
+
+	if (cont->op_id == PLGFS_TOP_MOUNT) {
+		opts_in = cont->op_args.t_mount.opts_in;
+		opts_out = cont->op_args.t_mount.opts_out;
+
+	} else if (cont->op_id == PLGFS_SOP_REMOUNT_FS) {
+		opts_in = cont->op_args.s_remount_fs.opts_in;
+		opts_out = cont->op_args.s_remount_fs.opts_out;
+	} else {
+		BUG();
+		return;
+	}
+
+	memcpy(opts_in, opts_out, PAGE_SIZE);
+	opts_out[0] = 0;
+}
+
 static int plgfs_remount_fs(struct super_block *sb, int *f, char *d)
 {
 	struct plgfs_context *cont;
@@ -92,9 +116,10 @@ static int plgfs_remount_fs(struct super_block *sb, int *f, char *d)
 	cont->op_id = PLGFS_SOP_REMOUNT_FS;
 	cont->op_args.s_remount_fs.sb = sb;
 	cont->op_args.s_remount_fs.flags = f;
-	cont->op_args.s_remount_fs.data = d;
+	cont->op_args.s_remount_fs.opts_in = cfg->opts;
+	cont->op_args.s_remount_fs.opts_out = cfg->opts_orig;
 
-	if (!plgfs_precall_plgs(cont, sbi))
+	if (!plgfs_precall_plgs_cb(cont, sbi, plgfs_cp_opts))
 		goto postcalls;
 	
 	cont->op_rv.rv_int = 0;
@@ -104,13 +129,13 @@ static int plgfs_remount_fs(struct super_block *sb, int *f, char *d)
 
 	sb = cont->op_args.s_remount_fs.sb;
 	f = cont->op_args.s_remount_fs.flags;
-	d = cont->op_args.s_remount_fs.data;
+	d = cont->op_args.s_remount_fs.opts_in;
 
 	sbh = plgfs_sbh(sb);
 	if (!sbh->s_op->remount_fs)
 		goto postcalls;
 
-	cont->op_rv.rv_int = sbh->s_op->remount_fs(sbh, f, cfg->opts);
+	cont->op_rv.rv_int = sbh->s_op->remount_fs(sbh, f, d);
 
 postcalls:
 	plgfs_postcall_plgs(cont, sbi);
@@ -395,21 +420,6 @@ static struct plgfs_sb_info *plgfs_alloc_sbi(struct plgfs_mnt_cfg *cfg)
 	return sbi;
 }
 
-static void plgfs_cp_opts(struct plgfs_context *cont)
-{
-	char *opts_in;
-	char *opts_out;
-
-	if (!(cont->plg->flags & PLGFS_PLG_HAS_OPTS))
-		return;
-
-	opts_in = cont->op_args.t_mount.opts_in;
-	opts_out = cont->op_args.t_mount.opts_out;
-
-	memcpy(opts_in, opts_out, PAGE_SIZE);
-	opts_out[0] = 0;
-}
-
 int plgfs_fill_super(struct super_block *sb, int flags,
 		struct plgfs_mnt_cfg *cfg)
 {
@@ -434,8 +444,6 @@ int plgfs_fill_super(struct super_block *sb, int flags,
 		plgfs_free_sbi(sbi);
 		return PTR_ERR(cont);
 	}
-
-	cfg->opts_orig[0] = 0;
 
 	cont->op_id = PLGFS_TOP_MOUNT;
 	cont->op_args.t_mount.sb = sb;

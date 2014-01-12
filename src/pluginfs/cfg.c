@@ -169,6 +169,9 @@ struct plgfs_mnt_cfg *plgfs_get_cfg(struct file_system_type *fs_type,
 	if (rv)
 		goto err;
 
+	cfg->opts_orig = data;
+	cfg->opts_orig[0] = 0;
+
 	cfg->plgs_nr = plgfs_get_plgs_nr(cfg->plgs_str);
 	
 	cfg->plgs = kzalloc(sizeof(struct plgfs_plugin *) * cfg->plgs_nr,
@@ -186,8 +189,6 @@ struct plgfs_mnt_cfg *plgfs_get_cfg(struct file_system_type *fs_type,
 
 	if (!dev_name)
 		return cfg;
-
-	cfg->opts_orig = data;
 
 	rv = kern_path(dev_name, LOOKUP_FOLLOW, &cfg->path);
 	if (rv)

@@ -311,7 +311,8 @@ union plgfs_op_args {
 	struct {
 		struct super_block *sb;
 		int *flags;
-		char *data;
+		char *opts_in;
+		char *opts_out;
 	} s_remount_fs;
 
 	struct {
