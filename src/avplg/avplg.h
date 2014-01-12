@@ -27,6 +27,7 @@
 #include <linux/fs.h>
 #include <linux/file.h>
 #include <linux/slab.h>
+#include <linux/parser.h>
 #include <pluginfs.h>
 
 #define AVPLG_VERSION   "0.1" 
@@ -107,5 +108,16 @@ struct avplg_trusted {
 extern int avplg_trusted_add(pid_t tgid);
 extern int avplg_trusted_rem(pid_t tgid);
 extern int avplg_trusted_allow(pid_t tgid);
+
+#define AVPLG_NOCLOSE 1
+#define AVPLG_NOCACHE 2
+
+struct avplg_sb_info {
+	unsigned long jiffies;
+	unsigned int flags;
+};
+
+unsigned int avplg_get_noclose(struct avplg_sb_info *asbi);
+unsigned int avplg_get_nocache(struct avplg_sb_info *asbi);
 
 #endif
