@@ -210,7 +210,7 @@ static enum plgfs_rv avplg_pre_mount(struct plgfs_context *cont)
 		return PLGFS_STOP;
 	}
 
-	plgfs_set_sb_priv(cont->op_args.t_mount.sb, cont->plg_id, asbi);
+	*plgfs_sb_priv(cont->op_args.t_mount.sb, cont->plg_id) = asbi;
 
 	return PLGFS_CONTINUE;
 }
@@ -221,7 +221,7 @@ static enum plgfs_rv avplg_post_mount(struct plgfs_context *cont)
 	struct super_block *sb;
 
 	sb = cont->op_args.t_mount.sb;
-	asbi = plgfs_get_sb_priv(sb, cont->plg_id);
+	asbi = *plgfs_sb_priv(sb, cont->plg_id);
 	if (cont->op_rv.rv_int)
 		kfree(asbi);
 
@@ -234,7 +234,7 @@ static enum plgfs_rv avplg_pre_put_super(struct plgfs_context *cont)
 	struct super_block *sb;
 
 	sb = cont->op_args.s_put_super.sb;
-	asbi = plgfs_get_sb_priv(sb, cont->plg_id);
+	asbi = *plgfs_sb_priv(sb, cont->plg_id);
 	kfree(asbi);
 
 	return PLGFS_CONTINUE;
@@ -248,7 +248,7 @@ static enum plgfs_rv avplg_pre_remount_fs(struct plgfs_context *cont)
 	char *opts_out;
 
 	sb = cont->op_args.s_remount_fs.sb;
-	asbi = plgfs_get_sb_priv(sb, cont->plg_id);
+	asbi = *plgfs_sb_priv(sb, cont->plg_id);
 	opts_in = cont->op_args.s_remount_fs.opts_in;
 	opts_out = cont->op_args.s_remount_fs.opts_out;
 
@@ -269,7 +269,7 @@ static enum plgfs_rv avplg_pre_show_options(struct plgfs_context *cont)
 	seq = cont->op_args.s_show_options.seq;
 	sb = cont->op_args.s_show_options.dentry->d_sb;
 
-	asbi = plgfs_get_sb_priv(sb, cont->plg_id);
+	asbi = *plgfs_sb_priv(sb, cont->plg_id);
 
 	val = jiffies_to_msecs(avplg_get_timeout(asbi));
 	seq_printf(seq, ",avplg_timeout=%u", val);
