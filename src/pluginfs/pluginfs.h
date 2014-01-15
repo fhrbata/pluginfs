@@ -385,14 +385,10 @@ extern int plgfs_register_plugin(struct plgfs_plugin *);
 extern int plgfs_unregister_plugin(struct plgfs_plugin *);
 extern int plgfs_get_plugin_sb_id(struct plgfs_plugin *, struct super_block *);
 
-extern void *plgfs_get_sb_priv(struct super_block *, int);
-extern void plgfs_set_sb_priv(struct super_block *, int, void *);
-extern void *plgfs_get_file_priv(struct file *, int);
-extern void plgfs_set_file_priv(struct file *, int, void *);
-extern void *plgfs_get_dentry_priv(struct dentry *, int);
-extern void plgfs_set_dentry_priv(struct dentry *, int, void *);
-extern void *plgfs_get_inode_priv(struct inode *, int);
-extern void plgfs_set_inode_priv(struct inode *, int, void *);
+extern void **plgfs_sb_priv(struct super_block *, int);
+extern void **plgfs_file_priv(struct file *, int);
+extern void **plgfs_dentry_priv(struct dentry *, int);
+extern void **plgfs_inode_priv(struct inode *, int);
 
 extern int plgfs_walk_dtree(struct plgfs_plugin *, struct dentry *,
 		int (*cb)(struct dentry *, void *, int), void *);
