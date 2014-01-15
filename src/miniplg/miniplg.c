@@ -123,7 +123,7 @@ static enum plgfs_rv miniplg_pre_mount(struct plgfs_context *cont)
 	if (!miniplg_opt)
 		return PLGFS_CONTINUE;
 
-	plgfs_set_sb_priv(cont->op_args.t_mount.sb, cont->plg_id, miniplg_opt);
+	*plgfs_sb_priv(cont->op_args.t_mount.sb, cont->plg_id) =  miniplg_opt;
 
 	return PLGFS_CONTINUE;
 }
@@ -138,8 +138,8 @@ static enum plgfs_rv miniplg_post_mount(struct plgfs_context *cont)
 	path = cont->op_args.t_mount.path;
 
 	if (cont->op_rv.rv_int) {
-		miniplg_opt = plgfs_get_sb_priv(sb, cont->plg_id);
-		plgfs_set_sb_priv(sb, cont->plg_id, NULL);
+		miniplg_opt = *plgfs_sb_priv(sb, cont->plg_id);
+		*plgfs_sb_priv(sb, cont->plg_id) = NULL;
 		kfree(miniplg_opt);
 		return PLGFS_CONTINUE;
 	}
@@ -156,7 +156,7 @@ static enum plgfs_rv miniplg_pre_put_super(struct plgfs_context *cont)
 	struct super_block *sb;
 
 	sb = cont->op_args.s_put_super.sb;
-	miniplg_opt = plgfs_get_sb_priv(sb, cont->plg_id);
+	miniplg_opt = *plgfs_sb_priv(sb, cont->plg_id);
 	kfree(miniplg_opt);
 	return PLGFS_CONTINUE;
 }
@@ -170,7 +170,7 @@ static enum plgfs_rv miniplg_pre_show_options(struct plgfs_context *cont)
 	seq = cont->op_args.s_show_options.seq;
 	sb = cont->op_args.s_show_options.dentry->d_sb;
 
-	miniplg_opt = plgfs_get_sb_priv(sb, cont->plg_id);
+	miniplg_opt = *plgfs_sb_priv(sb, cont->plg_id);
 	if (!miniplg_opt)
 		return PLGFS_CONTINUE;
 
