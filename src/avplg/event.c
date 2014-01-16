@@ -25,9 +25,11 @@ static DEFINE_SPINLOCK(avplg_event_lock);
 static int avplg_event_accept = 0;
 static struct kmem_cache *avplg_event_cache = NULL;
 
-static struct avplg_event *avplg_event_alloc(struct file *file, int type)
+static struct avplg_event *avplg_event_alloc(struct file *file, int type,
+		int id)
 {
 	struct avplg_event *event;
+	struct avplg_inode_info *ii;
 
 	event = kmem_cache_zalloc(avplg_event_cache, GFP_KERNEL);
 	if (!event)
@@ -38,11 +40,19 @@ static struct avplg_event *avplg_event_alloc(struct file *file, int type)
 	atomic_set(&event->count, 1);
 	init_completion(&event->wait);
 	event->type = type;
+	event->plg_id = id;
 	event->fd = -1;
 	event->pid = current->pid;
 	event->tgid = current->tgid;
 	event->path = file->f_path;
 	path_get(&event->path);
+
+	ii = avplg_ii(file->f_dentry->d_inode, id);
+
+	spin_lock(&ii->lock);
+	event->result_ver = ii->cache_ver;
+	event->cache_glob_ver = avplg_cache_glob_ver();
+	spin_unlock(&ii->lock);
 
 	return event;
 }
@@ -128,12 +138,12 @@ static int avplg_event_wait(struct avplg_event *event)
 	return 0;
 }
 
-int avplg_event_process(struct file *file, int type)
+int avplg_event_process(struct file *file, int type, int id)
 {
 	struct avplg_event *event;
 	int rv = 0;
 
-	event = avplg_event_alloc(file, type);
+	event = avplg_event_alloc(file, type, id);
 	if (IS_ERR(event))
 		return PTR_ERR(event);
 
@@ -144,6 +154,7 @@ int avplg_event_process(struct file *file, int type)
 	if (rv)
 		goto exit;
 
+	avplg_cache_update(event);
 	rv = event->result;
 exit:
 	avplg_event_rem(event);
