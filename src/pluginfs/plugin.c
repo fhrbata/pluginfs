@@ -168,6 +168,11 @@ void **plgfs_inode_priv(struct inode *i, int plg_sb_id)
 	return &plgfs_ii(i)->priv[plg_sb_id];
 }
 
+void **plgfs_context_priv(struct plgfs_context *cont, int plg_sb_id)
+{
+	return &cont->priv[plg_sb_id];
+}
+
 EXPORT_SYMBOL(plgfs_register_plugin);
 EXPORT_SYMBOL(plgfs_unregister_plugin);
 EXPORT_SYMBOL(plgfs_walk_dtree);
@@ -176,3 +181,4 @@ EXPORT_SYMBOL(plgfs_sb_priv);
 EXPORT_SYMBOL(plgfs_file_priv);
 EXPORT_SYMBOL(plgfs_dentry_priv);
 EXPORT_SYMBOL(plgfs_inode_priv);
+EXPORT_SYMBOL(plgfs_context_priv);

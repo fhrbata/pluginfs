@@ -360,7 +360,7 @@ struct plgfs_context {
 	int plg_id;
 	int idx_start;
 	int idx_end;
-	void *priv[1];
+	void *priv[0];
 };
 
 typedef enum plgfs_rv (*plgfs_op_cb)(struct plgfs_context *);
@@ -389,6 +389,7 @@ extern void **plgfs_sb_priv(struct super_block *, int);
 extern void **plgfs_file_priv(struct file *, int);
 extern void **plgfs_dentry_priv(struct dentry *, int);
 extern void **plgfs_inode_priv(struct inode *, int);
+extern void **plgfs_context_priv(struct plgfs_context *, int);
 
 extern int plgfs_walk_dtree(struct plgfs_plugin *, struct dentry *,
 		int (*cb)(struct dentry *, void *, int), void *);
