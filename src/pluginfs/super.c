@@ -286,12 +286,31 @@ static void plgfs_i_callback(struct rcu_head *head)
 	struct inode *i;
 	struct plgfs_sb_info *sbi;
 	struct plgfs_inode_info *ii;
+	struct plgfs_context *cont;
 
 	i = container_of(head, struct inode, i_rcu);
 	ii = plgfs_ii(i);
 	sbi = plgfs_sbi(i->i_sb);
 
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont)) {
+		kmem_cache_free(sbi->cache->ii_cache, plgfs_ii(i));
+		pr_err("pluginfs: cannot alloc context for destroy inode cb, no"
+				"plugins will be called\n");
+		return;
+	}
+
+	cont->op_id = PLGFS_SOP_DESTROY_INODE_CB;
+	cont->op_args.s_destroy_inode_cb.inode = i;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
 	kmem_cache_free(sbi->cache->ii_cache, ii);
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	plgfs_free_context(sbi, cont);
 }
 
 static void plgfs_destroy_inode(struct inode *i)

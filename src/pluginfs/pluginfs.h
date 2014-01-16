@@ -84,6 +84,7 @@ enum plgfs_op_id {
 	PLGFS_SOP_SHOW_OPTIONS,
 	PLGFS_SOP_ALLOC_INODE,
 	PLGFS_SOP_DESTROY_INODE,
+	PLGFS_SOP_DESTROY_INODE_CB,
 	PLGFS_TOP_MOUNT,
 	PLGFS_OP_NR
 };
@@ -336,6 +337,10 @@ union plgfs_op_args {
 	struct {
 		struct inode *inode;
 	} s_destroy_inode;
+
+	struct {
+		struct inode *inode;
+	} s_destroy_inode_cb;
 
 	struct {
 		struct super_block *sb;
