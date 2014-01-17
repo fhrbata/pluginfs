@@ -120,9 +120,12 @@ static void avplg_event_rem(struct avplg_event *event)
 
 static int avplg_event_wait(struct avplg_event *event)
 {
+	struct avplg_sb_info *sbi;
 	long jiffies;
 
-	jiffies = MAX_SCHEDULE_TIMEOUT;
+	sbi = avplg_sbi(event->path.dentry->d_sb, event->plg_id);
+
+	jiffies = avplg_get_timeout(sbi);
 
 	jiffies = wait_for_completion_interruptible_timeout(&event->wait,
 			jiffies);

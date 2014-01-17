@@ -121,11 +121,12 @@ struct avplg_sb_info {
 	unsigned int flags;
 };
 
-struct avplg_sb_info *avplg_sbi(struct super_block *sb, int id);
+extern struct avplg_sb_info *avplg_sbi(struct super_block *sb, int id);
 
-unsigned int avplg_noclose(struct avplg_sb_info *sbi);
-unsigned int avplg_nocache(struct avplg_sb_info *sbi);
-unsigned int avplg_nowrite(struct avplg_sb_info *sbi);
+extern unsigned int avplg_noclose(struct avplg_sb_info *sbi);
+extern unsigned int avplg_nocache(struct avplg_sb_info *sbi);
+extern unsigned int avplg_nowrite(struct avplg_sb_info *sbi);
+extern unsigned long avplg_get_timeout(struct avplg_sb_info *sbi);
 
 struct avplg_inode_info {
 	spinlock_t lock;
@@ -135,12 +136,12 @@ struct avplg_inode_info {
 	unsigned long cache_glob_ver;
 };
 
-struct avplg_inode_info *avplg_ii(struct inode *i, int id);
+extern struct avplg_inode_info *avplg_ii(struct inode *i, int id);
 
-unsigned long avplg_cache_glob_ver(void);
-void avplg_cache_glob_inc(void);
-void avplg_cache_update(struct avplg_event *event);
-int avplg_cache_check(struct file *file, int id);
-void avplg_cache_inc(struct file *file, int id);
+extern unsigned long avplg_cache_glob_ver(void);
+extern void avplg_cache_glob_inc(void);
+extern void avplg_cache_update(struct avplg_event *event);
+extern int avplg_cache_check(struct file *file, int id);
+extern void avplg_cache_inc(struct file *file, int id);
 
 #endif
