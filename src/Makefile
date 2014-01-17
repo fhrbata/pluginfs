@@ -59,28 +59,28 @@ modules-uninstall:
 	rm -rf $(KDIR)/$(MDIR)
 
 libs:
-	$(MAKE) -C libav
+	$(MAKE) -C libavplg
 
 libs-install: libs
-	$(MAKE) -C libav install
+	$(MAKE) -C libavplg install
 
 libs-uninstall:
-	$(MAKE) -C libav uninstall
+	$(MAKE) -C libavplg uninstall
 
 libs-clean:
-	$(MAKE) -C libav clean
+	$(MAKE) -C libavplg clean
 
 utils: libs
-	$(MAKE) -C avtest
+	$(MAKE) -C avplgtest
 
 utils-install: utils
-	$(MAKE) -C avtest install
+	$(MAKE) -C avplgtest install
 
 utils-uninstall:
-	$(MAKE) -C avtest uninstall
+	$(MAKE) -C avplgtest uninstall
 
 utils-clean:
-	$(MAKE) -C avtest clean
+	$(MAKE) -C avplgtest clean
 
 cscope:
 	find . -type f -iregex '^.*\.\(c\|h\)' > cscope.files

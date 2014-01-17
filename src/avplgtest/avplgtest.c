@@ -16,13 +16,13 @@
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
-#include <av.h>
+#include <avplg.h>
 
 #define THREADS_COUNT 10
 
 static const char *version = "0.1";
 
-static struct av_connection av_conn;
+static struct avplg_connection con;
 static int stop = 0;
 
 static void sighandler(int sig)
@@ -32,35 +32,35 @@ static void sighandler(int sig)
 
 static int check(void)
 {
-	struct av_event av_event;
+	struct avplg_event event;
 	char fn[PATH_MAX];
 
 	while (!stop) {
-		if (av_request(&av_conn, &av_event, 500)) {
+		if (avplg_request(&con, &event, 500)) {
 			if (errno == ETIMEDOUT)
 				continue;
 
-			perror("av_request failed");
+			perror("avplg_request failed");
 			return -1;
 		}
 
-		if (av_get_filename(&av_event, fn, PATH_MAX)) {
-			perror("av_get_filename failed");
+		if (avplg_get_filename(&event, fn, PATH_MAX)) {
+			perror("avplg_get_filename failed");
 			return -1;
 		}
 
-		if (av_set_result(&av_event, AV_ACCESS_ALLOW)) {
-			perror("av_set_result failed");
+		if (avplg_set_result(&event, AVPLG_ACCESS_ALLOW)) {
+			perror("avplg_set_result failed");
 			return -1;
 		}
 
 		printf("thread[%lu]: id: %lu, type: %d, fd: %d, pid: %d, "
 				"tgid: %d, res: %d, fn: %s\n", pthread_self(),
-				av_event.id, av_event.type, av_event.fd,
-				av_event.pid, av_event.tgid, av_event.res, fn);
+				event.id, event.type, event.fd, event.pid,
+				event.tgid, event.res, fn);
 
-		if (av_reply(&av_conn, &av_event)) {
-			perror("av_reply failed");
+		if (avplg_reply(&con, &event)) {
+			perror("avplg_reply failed");
 			return -1;
 		}
 
@@ -102,8 +102,8 @@ int main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT, &sa, NULL);
 
-	if (av_register(&av_conn)) {
-		perror("av_register failed");
+	if (avplg_register(&con)) {
+		perror("avplg_register failed");
 		exit(EXIT_FAILURE);
 	}
 
@@ -125,8 +125,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (av_unregister(&av_conn)) {
-		perror("av_unregister failed");
+	if (avplg_unregister(&con)) {
+		perror("avplg_unregister failed");
 		exit(EXIT_FAILURE);
 	}
 

@@ -8,11 +8,11 @@ endif
 VMAR := 0
 VMIN := 1
 VREL := 0
-LIB_NAME := libav
-LIB_OBJS := av.o
-LIB_SRCS := av.c
+LIB_NAME := libavplg
+LIB_OBJS := libavplg.o
+LIB_SRCS := libavplg.c
 LIB_DIR ?= /usr/lib/pluginfs
-HDR_NAME := av.h
+HDR_NAME := avplg.h
 HDR_DIR ?= /usr/include
 INCLUDE ?=
 DEP_FILE := .deps

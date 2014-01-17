@@ -5,13 +5,13 @@ ifdef DEBUG
 CFLAGS += -g -O0
 endif
 
-BIN_NAME := avtest
-BIN_OBJS := avtest.o
-BIN_SRCS := avtest.c
+BIN_NAME := avplgtest
+BIN_OBJS := avplgtest.o
+BIN_SRCS := avplgtest.c
 BIN_DIR ?= /usr/bin
-INCLUDE ?= -I../libav
+INCLUDE ?= -I../libavplg
 DEP_FILE := .deps
-AVLIB ?= ${CURDIR}/../libav/libav.a
+AVLIB ?= ${CURDIR}/../libavplg/libavplg.a
 
 
 .PHONY: all install uninstall clean

@@ -14,50 +14,50 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
-#include "av.h"
+#include "avplg.h"
 
-static int av_open_conn(struct av_connection *conn, int flags)
+static int avplg_open_con(struct avplg_connection *con, int flags)
 {
-	if (!conn) {
+	if (!con) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if ((conn->fd = open("/dev/avplg", flags)) == -1)
+	if ((con->fd = open("/dev/avplg", flags)) == -1)
 		return -1;
 
 	return 0;
 }
 
-int av_register(struct av_connection *conn)
+int avplg_register(struct avplg_connection *con)
 {
-	return av_open_conn(conn, O_RDWR);
+	return avplg_open_con(con, O_RDWR);
 }
 
-int av_unregister(struct av_connection *conn)
+int avplg_unregister(struct avplg_connection *con)
 {
-	if (!conn) {
+	if (!con) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (close(conn->fd) == -1)
+	if (close(con->fd) == -1)
 		return -1;
 
 	return 0;
 }
 
-int av_register_trusted(struct av_connection *conn)
+int avplg_register_trusted(struct avplg_connection *con)
 {
-	return av_open_conn(conn, O_RDONLY);
+	return avplg_open_con(con, O_RDONLY);
 }
 
-int av_unregister_trusted(struct av_connection *conn)
+int avplg_unregister_trusted(struct avplg_connection *con)
 {
-	return av_unregister(conn);
+	return avplg_unregister(con);
 }
 
-int av_request(struct av_connection *conn, struct av_event *event, int timeout)
+int avplg_request(struct avplg_connection *con, struct avplg_event *event, int timeout)
 {
 	struct timeval tv;
 	struct timeval *ptv;
@@ -65,13 +65,13 @@ int av_request(struct av_connection *conn, struct av_event *event, int timeout)
 	fd_set rfds;
 	int rv = 0;
 
-	if (!conn || !event || timeout < 0) {
+	if (!con || !event || timeout < 0) {
 		errno = EINVAL;
 		return -1;
 	}
 
 	FD_ZERO(&rfds);
-	FD_SET(conn->fd, &rfds);
+	FD_SET(con->fd, &rfds);
 
 	if (timeout) {
 		tv.tv_sec = timeout / 1000;
@@ -81,7 +81,7 @@ int av_request(struct av_connection *conn, struct av_event *event, int timeout)
 		ptv = NULL;
 
 	while (!rv) {
-		rv = select(conn->fd + 1, &rfds, NULL, NULL, ptv);
+		rv = select(con->fd + 1, &rfds, NULL, NULL, ptv);
 		if (rv == 0) {
 			errno = ETIMEDOUT;
 			return -1;
@@ -89,7 +89,7 @@ int av_request(struct av_connection *conn, struct av_event *event, int timeout)
 		if (rv == -1)
 			return -1;
 
-		rv = read(conn->fd, buf, 256);
+		rv = read(con->fd, buf, 256);
 		if (rv == -1)
 			return -1;
 	}
@@ -104,11 +104,11 @@ int av_request(struct av_connection *conn, struct av_event *event, int timeout)
 	return 0;
 }
 
-int av_reply(struct av_connection *conn, struct av_event *event)
+int avplg_reply(struct avplg_connection *con, struct avplg_event *event)
 {
 	char buf[256];
 
-	if (!conn || !event) {
+	if (!con || !event) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -116,7 +116,7 @@ int av_reply(struct av_connection *conn, struct av_event *event)
 	snprintf(buf, 256, "ver:%u,id:%lu,res:%d", event->ver, event->id,
 			event->res);
 
-	if (write(conn->fd, buf, strlen(buf) + 1) == -1)
+	if (write(con->fd, buf, strlen(buf) + 1) == -1)
 		return -1;
 
 	if (close(event->fd) == -1)
@@ -125,14 +125,14 @@ int av_reply(struct av_connection *conn, struct av_event *event)
 	return 0;
 }
 
-int av_set_result(struct av_event *event, int res)
+int avplg_set_result(struct avplg_event *event, int res)
 {
 	if (!event) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (res != AV_ACCESS_ALLOW && res != AV_ACCESS_DENY) {
+	if (res != AVPLG_ACCESS_ALLOW && res != AVPLG_ACCESS_DENY) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -142,7 +142,7 @@ int av_set_result(struct av_event *event, int res)
 	return 0;
 }
 
-int av_get_filename(struct av_event *event, char *buf, int size)
+int avplg_get_filename(struct avplg_event *event, char *buf, int size)
 {
 	char fn[256];
 
