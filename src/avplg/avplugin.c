@@ -317,15 +317,20 @@ static enum plgfs_rv avplg_pre_show_options(struct plgfs_context *cont)
 	struct avplg_sb_info *sbi;
 	struct super_block *sb;
 	struct seq_file *seq; 
-	unsigned int val;
+	unsigned int msecs;
+	unsigned long jiffies;
 
 	seq = cont->op_args.s_show_options.seq;
 	sb = cont->op_args.s_show_options.dentry->d_sb;
 
 	sbi = avplg_sbi(sb, cont->plg_id);
 
-	val = jiffies_to_msecs(avplg_get_timeout(sbi));
-	seq_printf(seq, ",avplg_timeout=%u", val);
+	jiffies = avplg_get_timeout(sbi);
+
+	if (jiffies != MAX_SCHEDULE_TIMEOUT) {
+		msecs = jiffies_to_msecs(jiffies);
+		seq_printf(seq, ",avplg_timeout=%u", msecs);
+	}
 
 	if (!avplg_noclose(sbi))
 		seq_printf(seq, ",avplg_close");
