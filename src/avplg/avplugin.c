@@ -65,15 +65,15 @@ static enum plgfs_rv avplg_pre_open(struct plgfs_context *cont)
 	wc = atomic_read(&file->f_dentry->d_inode->i_writecount);
 	sbi = avplg_sbi(file->f_dentry->d_sb, cont->plg_id);
 
-	rv = avplg_cache_check(file, cont->plg_id);
-	if (!avplg_nocache(sbi) && rv) {
+	rv = avplg_icache_check(file, cont->plg_id);
+	if (!avplg_sb_nocache(sbi) && rv) {
 		if (wc <= 0)
 			return avplg_eval_res(rv, cont);
 
 		else if (wc == 1 && file->f_mode & FMODE_WRITE)
 			return avplg_eval_res(rv, cont);
 
-		else if (avplg_nowrite(sbi))
+		else if (avplg_sb_nowrite(sbi))
 			return avplg_eval_res(rv, cont);
 	}
 
@@ -94,15 +94,15 @@ static enum plgfs_rv avplg_post_release(struct plgfs_context *cont)
 		return PLGFS_CONTINUE;
 
 	if (file->f_mode & FMODE_WRITE)
-		avplg_cache_inc(file, cont->plg_id);
+		avplg_icache_inv(file, cont->plg_id);
 
 	sbi = avplg_sbi(file->f_dentry->d_sb, cont->plg_id);
 
-	rv = avplg_cache_check(file, cont->plg_id);
-	if (!avplg_nocache(sbi) && rv)
+	rv = avplg_icache_check(file, cont->plg_id);
+	if (!avplg_sb_nocache(sbi) && rv)
 		return avplg_eval_res(rv, cont);
 
-	if (avplg_noclose(sbi) || !(file->f_mode & FMODE_WRITE))
+	if (avplg_sb_noclose(sbi) || !(file->f_mode & FMODE_WRITE))
 		return avplg_eval_res(rv, cont);
 
 	rv = avplg_event_process(file, AVPLG_EVENT_CLOSE, cont->plg_id);
@@ -149,17 +149,17 @@ static unsigned int avplg_get_flags(struct avplg_sb_info *sbi)
 	return sbi->flags;
 }
 
-unsigned int avplg_noclose(struct avplg_sb_info *sbi)
+unsigned int avplg_sb_noclose(struct avplg_sb_info *sbi)
 {
 	return avplg_get_flags(sbi) & AVPLG_NOCLOSE;
 }
 
-unsigned int avplg_nocache(struct avplg_sb_info *sbi)
+unsigned int avplg_sb_nocache(struct avplg_sb_info *sbi)
 {
 	return avplg_get_flags(sbi) & AVPLG_NOCACHE;
 }
 
-unsigned int avplg_nowrite(struct avplg_sb_info *sbi)
+unsigned int avplg_sb_nowrite(struct avplg_sb_info *sbi)
 {
 	return avplg_get_flags(sbi) & AVPLG_NOWRITE;
 }
@@ -170,7 +170,7 @@ static void avplg_set_timeout(struct avplg_sb_info *sbi, unsigned long timeout)
 	wmb();
 }
 
-unsigned long avplg_get_timeout(struct avplg_sb_info *sbi)
+unsigned long avplg_sb_timeout(struct avplg_sb_info *sbi)
 {
 	rmb();
 	return sbi->jiffies;
@@ -325,20 +325,20 @@ static enum plgfs_rv avplg_pre_show_options(struct plgfs_context *cont)
 
 	sbi = avplg_sbi(sb, cont->plg_id);
 
-	jiffies = avplg_get_timeout(sbi);
+	jiffies = avplg_sb_timeout(sbi);
 
 	if (jiffies != MAX_SCHEDULE_TIMEOUT) {
 		msecs = jiffies_to_msecs(jiffies);
 		seq_printf(seq, ",avplg_timeout=%u", msecs);
 	}
 
-	if (!avplg_noclose(sbi))
+	if (!avplg_sb_noclose(sbi))
 		seq_printf(seq, ",avplg_close");
 
-	if (avplg_nocache(sbi))
+	if (avplg_sb_nocache(sbi))
 		seq_printf(seq, ",avplg_nocache");
 
-	if (!avplg_nowrite(sbi))
+	if (!avplg_sb_nowrite(sbi))
 		seq_printf(seq, ",avplg_write");
 
 	return PLGFS_CONTINUE;

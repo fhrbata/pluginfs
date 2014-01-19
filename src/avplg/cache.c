@@ -19,27 +19,31 @@
 
 #include "avplg.h"
 
-static atomic_t avplg_cache_glob_cnt = ATOMIC_INIT(0);
-
-unsigned long avplg_cache_glob_ver(void)
+unsigned long avplg_sb_cache_ver(struct avplg_sb_info *sbi)
 {
-	return atomic_read(&avplg_cache_glob_cnt);
+	rmb();
+	return sbi->cache_ver;
 }
 
-void avplg_cache_glob_inc(void)
+void avplg_sb_cache_inv(struct avplg_sb_info *sbi)
 {
-	atomic_inc(&avplg_cache_glob_cnt);
+	sbi->cache_ver++;
+	wmb();
 }
 
-void avplg_cache_update(struct avplg_event *event)
+void avplg_icache_update(struct avplg_event *event)
 {
+	struct avplg_sb_info *sbi;
 	struct avplg_inode_info *ii;
+	struct inode *i;
 
-	ii = avplg_ii(event->path.dentry->d_inode, event->plg_id);
+	i = event->path.dentry->d_inode;
+	ii = avplg_ii(i, event->plg_id);
+	sbi = avplg_sbi(i->i_sb, event->plg_id);
 
 	spin_lock(&ii->lock);
 	ii->result_ver = event->result_ver;
-	ii->cache_glob_ver = event->cache_glob_ver;
+	ii->cache_sb_ver = avplg_sb_cache_ver(sbi);
 	if (event->result > 0)
 		ii->result = event->result;
 	else
@@ -48,7 +52,7 @@ void avplg_cache_update(struct avplg_event *event)
 	spin_unlock(&ii->lock);
 }
 
-void avplg_cache_inc(struct file *file, int id)
+void avplg_icache_inv(struct file *file, int id)
 {
 	struct avplg_inode_info *ii;
 
@@ -58,20 +62,22 @@ void avplg_cache_inc(struct file *file, int id)
 	spin_unlock(&ii->lock);
 }
 
-int avplg_cache_check(struct file *file, int id)
+int avplg_icache_check(struct file *file, int id)
 {
+	struct avplg_sb_info *sbi;
 	struct avplg_inode_info *ii;
 	int rv;
 
 	rv = 0;
 	ii = avplg_ii(file->f_dentry->d_inode, id);
+	sbi = avplg_sbi(file->f_dentry->d_sb, id);
 
 	spin_lock(&ii->lock);
 
 	if (ii->result_ver != ii->cache_ver)
 		goto exit;
 
-	if (ii->cache_glob_ver != avplg_cache_glob_ver())
+	if (ii->cache_sb_ver != avplg_sb_cache_ver(sbi))
 		goto exit;
 
 	rv = ii->result;

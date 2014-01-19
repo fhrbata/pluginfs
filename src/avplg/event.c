@@ -30,6 +30,7 @@ static struct avplg_event *avplg_event_alloc(struct file *file, int type,
 {
 	struct avplg_event *event;
 	struct avplg_inode_info *ii;
+	struct avplg_sb_info *sbi;
 
 	event = kmem_cache_zalloc(avplg_event_cache, GFP_KERNEL);
 	if (!event)
@@ -48,10 +49,11 @@ static struct avplg_event *avplg_event_alloc(struct file *file, int type,
 	path_get(&event->path);
 
 	ii = avplg_ii(file->f_dentry->d_inode, id);
+	sbi = avplg_sbi(file->f_dentry->d_sb, id);
 
 	spin_lock(&ii->lock);
 	event->result_ver = ii->cache_ver;
-	event->cache_glob_ver = avplg_cache_glob_ver();
+	event->cache_glob_ver = avplg_sb_cache_ver(sbi);
 	spin_unlock(&ii->lock);
 
 	return event;
@@ -125,7 +127,7 @@ static int avplg_event_wait(struct avplg_event *event)
 
 	sbi = avplg_sbi(event->path.dentry->d_sb, event->plg_id);
 
-	jiffies = avplg_get_timeout(sbi);
+	jiffies = avplg_sb_timeout(sbi);
 
 	jiffies = wait_for_completion_interruptible_timeout(&event->wait,
 			jiffies);
@@ -157,7 +159,7 @@ int avplg_event_process(struct file *file, int type, int id)
 	if (rv)
 		goto exit;
 
-	avplg_cache_update(event);
+	avplg_icache_update(event);
 	rv = event->result;
 exit:
 	avplg_event_rem(event);
