@@ -180,7 +180,27 @@ static struct dentry *plgfs_mount(struct file_system_type *fs_type, int flags,
 
 static void plgfs_kill_sb(struct super_block *sb)
 {
+
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+
+	sbi = plgfs_sbi(sb);
+	cont = plgfs_alloc_context(sbi);
+	if (IS_ERR(cont)) {
+		pr_err("pluginfs: cannot alloc context for kill super, no"
+				"plugins will be called\n");
+		kill_anon_super(sb);
+		return;
+	}
+
+	cont->op_id = PLGFS_TOP_KILL_SB,
+	cont->op_args.t_kill_sb.sb = sb;
+
+	plgfs_precall_plgs(cont, sbi);
+
 	kill_anon_super(sb);
+
+	plgfs_free_context(sbi, cont);
 }
 
 struct file_system_type plgfs_type = {

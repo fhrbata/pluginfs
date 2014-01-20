@@ -86,6 +86,7 @@ enum plgfs_op_id {
 	PLGFS_SOP_DESTROY_INODE,
 	PLGFS_SOP_DESTROY_INODE_CB,
 	PLGFS_TOP_MOUNT,
+	PLGFS_TOP_KILL_SB,
 	PLGFS_OP_NR
 };
 
@@ -349,6 +350,10 @@ union plgfs_op_args {
 		char *opts_out;
 		struct path *path;
 	} t_mount;
+
+	struct {
+		struct super_block *sb;
+	} t_kill_sb;
 };
 
 enum plgfs_rv {
