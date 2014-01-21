@@ -279,3 +279,50 @@ struct plgfs_dentry_info *plgfs_alloc_di(struct dentry *d)
 
 	return di;
 }
+
+/* This lookup is not using vfsmount and can be used only if you are sure
+ * someone else is already holding ref. to it, e.g. during post mount. In
+ * other cases the kern_path function should be used.
+ */
+struct dentry *plgfs_dentry_lookup(struct dentry *dentry, char *path)
+{
+	struct dentry *child;
+	char *s;
+
+	dentry = dget(dentry);
+
+	while (!IS_ERR(dentry)) {
+
+		if (!dentry->d_inode) {
+			dput(dentry);
+			return ERR_PTR(-ENOENT);
+		}
+
+		if (!S_ISDIR(dentry->d_inode->i_mode)) {
+			dput(dentry);
+			return ERR_PTR(-ENOTDIR);
+		}
+
+		while (*path && *path == '/')
+			path++;
+
+		if (!*path)
+			break;
+
+		s = path++;
+
+		while (*path && *path != '/')
+			path++;
+
+		mutex_lock(&dentry->d_inode->i_mutex);
+		child = lookup_one_len(s, dentry, path - s);
+		mutex_unlock(&dentry->d_inode->i_mutex);
+
+		dput(dentry);
+		dentry = child;
+	}
+
+	return dentry;
+}
+
+EXPORT_SYMBOL(plgfs_dentry_lookup);

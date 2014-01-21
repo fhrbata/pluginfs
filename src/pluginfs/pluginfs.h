@@ -405,5 +405,6 @@ extern int plgfs_walk_dtree(struct plgfs_plugin *, struct dentry *,
 		int (*cb)(struct dentry *, void *, int), void *);
 
 extern void plgfs_pass_on_option(char *, char *);
+extern struct dentry *plgfs_dentry_lookup(struct dentry *, char *);
 
 #endif
