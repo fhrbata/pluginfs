@@ -60,6 +60,13 @@ int plgfs_walk_dtree(struct plgfs_plugin *plg, struct dentry *root,
 		if (rv < 0)
 			goto error;
 
+		if (!dp->d_inode)
+			goto skip;
+
+		if (!S_ISDIR(dp->d_inode->i_mode))
+			goto skip;
+
+		mutex_lock(&dp->d_inode->i_mutex);
 		spin_lock(&dp->d_lock);
 
 		list_for_each_entry(d, &dp->d_subdirs, d_u.d_child) {
@@ -72,6 +79,7 @@ int plgfs_walk_dtree(struct plgfs_plugin *plg, struct dentry *root,
 		}
 
 		spin_unlock(&dp->d_lock);
+		mutex_unlock(&dp->d_inode->i_mutex);
 skip:
 		di = plgfs_di(dp);
 		list_del_init(&di->list_walk);
