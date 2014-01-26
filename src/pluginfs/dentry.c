@@ -96,6 +96,51 @@ error:
 	return rv;
 }
 
+/* This should be used only in situation where we do not have the vfsmount
+ * structure available e.g. during remount_fs. Otherwise d_path should be used.
+ * Please note that you have to be sure that the fs cannot be umounted, meaning
+ * someone else has to already hold ref. to the vfsmount.
+ */
+char *plgfs_dpath(struct dentry *d, char *buf, int len)
+{
+	char *rv;
+
+	if (--len < 0)
+		return ERR_PTR(-ENAMETOOLONG);
+
+	buf[len] = 0;
+
+	/* For now always grab the rename_lock, so dentry str and len are
+	 * consistent. Later we can do optimalization using rcu and something
+	 * like prepend_name for dentry str copy.
+	 */
+	read_seqlock_excl(&rename_lock);
+
+	if (IS_ROOT(d)) {
+		if (--len < 0)
+			return ERR_PTR(-ENAMETOOLONG);
+		buf[len] = '/';
+	}
+
+	while (!IS_ROOT(d)) {
+		len -= d->d_name.len + 1;
+		if (len < 0) {
+			rv = ERR_PTR(-ENAMETOOLONG);
+			goto done;
+		}
+
+		memcpy(buf + len + 1, d->d_name.name, d->d_name.len);
+		buf[len] = '/';
+		d = d->d_parent;
+	}
+
+	rv = buf + len;
+done:
+	read_sequnlock_excl(&rename_lock);
+
+	return rv;
+}
+
 static void plgfs_d_release(struct dentry *d)
 {
 	struct plgfs_context *cont;
@@ -334,3 +379,4 @@ struct dentry *plgfs_dentry_lookup(struct dentry *dentry, char *path)
 }
 
 EXPORT_SYMBOL(plgfs_dentry_lookup);
+EXPORT_SYMBOL(plgfs_dpath);
