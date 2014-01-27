@@ -158,7 +158,7 @@ static void plgfs_d_release(struct dentry *d)
 			dput(plgfs_dh(d));
 		kmem_cache_free(sbi->cache->di_cache, di);
 		pr_err("pluginfs: cannot alloc context for dentry release, no"
-				"plugins will be called\n");
+				" plugins will be called\n");
 		return;
 	}
 
@@ -308,6 +308,37 @@ postcalls:
 	plgfs_free_context(sbi, cont);
 
 	return rv;
+}
+
+void plgfs_d_instantiate(struct dentry *d, struct inode *i)
+{
+	struct plgfs_context *cont;
+	struct plgfs_sb_info *sbi;
+
+	sbi = plgfs_sbi(d->d_sb);
+	cont = plgfs_alloc_context_atomic(sbi);
+	if (IS_ERR(cont)) {
+		pr_err("pluginfs: cannot alloc context for dentry instantiate,"
+				" no plugins will be called\n");
+		return;
+	}
+
+	cont->op_id = PLGFS_DOP_D_INSTANTIATE;
+	cont->op_args.d_instantiate.dentry = d;
+	cont->op_args.d_instantiate.inode = i;
+
+	if (!plgfs_precall_plgs(cont, sbi))
+		goto postcalls;
+
+	d = cont->op_args.d_instantiate.dentry;
+	i = cont->op_args.d_instantiate.inode;
+
+	d_instantiate(d, i);
+
+postcalls:
+	plgfs_postcall_plgs(cont, sbi);
+
+	plgfs_free_context(sbi, cont);
 }
 
 const struct dentry_operations plgfs_dops = {

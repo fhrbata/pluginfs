@@ -203,5 +203,7 @@ extern struct file_system_type plgfs_type;
 
 extern int plgfs_major;
 
+extern void plgfs_d_instantiate(struct dentry *, struct inode *);
+
 #endif
 
