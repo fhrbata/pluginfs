@@ -40,6 +40,8 @@
 
 #define AVPLG_PROT_VERSION 1
 
+extern struct plgfs_plugin avplg;
+
 extern int avplg_chrdev_init(void);
 extern void avplg_chrdev_exit(void);
 
@@ -120,6 +122,10 @@ struct avplg_sb_info {
 	unsigned long jiffies;
 	unsigned long cache_ver;
 	unsigned int flags;
+	char *incl_str;
+	char *excl_str;
+	struct list_head paths;
+	struct mutex mutex; /* all path ops protected by this */
 };
 
 extern struct avplg_sb_info *avplg_sbi(struct super_block *sb, int id);
@@ -129,12 +135,33 @@ extern unsigned int avplg_sb_nocache(struct avplg_sb_info *sbi);
 extern unsigned int avplg_sb_nowrite(struct avplg_sb_info *sbi);
 extern unsigned long avplg_sb_timeout(struct avplg_sb_info *sbi);
 
+struct avplg_path {
+	struct dentry *dentry;
+	struct list_head list;
+};
+
+extern void avplg_path_free(struct avplg_path *path);
+extern int avplg_add_path(struct avplg_sb_info *sbi, struct dentry *d,
+		int id, int incl);
+extern int avplg_rem_path(struct avplg_sb_info *sbi, struct dentry *d, int id);
+extern void avplg_set_paths(struct super_block *sb, char *str, int id,
+		int incl);
+extern void avplg_rem_paths(struct super_block *sb, int id);
+extern void avplg_show_paths(struct super_block *sb, int id,
+		struct seq_file *seq);
+
+#define AVPLG_I_NONE 0
+#define AVPLG_I_INCL 1
+#define AVPLG_I_EXCL 2
+#define AVPLG_I_PATH 4
+
 struct avplg_inode_info {
 	spinlock_t lock;
 	int result;
 	unsigned long result_ver;
 	unsigned long cache_ver;
 	unsigned long cache_sb_ver;
+	atomic_t path_info;
 };
 
 extern struct avplg_inode_info *avplg_ii(struct inode *i, int id);

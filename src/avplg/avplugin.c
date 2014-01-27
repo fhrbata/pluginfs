@@ -53,6 +53,7 @@ static enum plgfs_rv avplg_eval_res(int rv, struct plgfs_context *cont)
 static enum plgfs_rv avplg_pre_open(struct plgfs_context *cont)
 {
 	struct avplg_sb_info *sbi;
+	struct avplg_inode_info *ii;
 	struct file *file;
 	int rv = 0;
 	int wc;
@@ -60,6 +61,10 @@ static enum plgfs_rv avplg_pre_open(struct plgfs_context *cont)
 	file = cont->op_args.f_open.file;
 
 	if (!avplg_should_check(file))
+		return PLGFS_CONTINUE;
+
+	ii = avplg_ii(file->f_dentry->d_inode, cont->plg_id);
+	if (!(atomic_read(&ii->path_info) & AVPLG_I_INCL)) 
 		return PLGFS_CONTINUE;
 
 	wc = atomic_read(&file->f_dentry->d_inode->i_writecount);
@@ -85,6 +90,7 @@ static enum plgfs_rv avplg_pre_open(struct plgfs_context *cont)
 static enum plgfs_rv avplg_post_release(struct plgfs_context *cont)
 {
 	struct avplg_sb_info *sbi;
+	struct avplg_inode_info *ii;
 	struct file *file;
 	int rv = 0;
 
@@ -95,6 +101,10 @@ static enum plgfs_rv avplg_post_release(struct plgfs_context *cont)
 
 	if (file->f_mode & FMODE_WRITE)
 		avplg_icache_inv(file, cont->plg_id);
+
+	ii = avplg_ii(file->f_dentry->d_inode, cont->plg_id);
+	if (!(atomic_read(&ii->path_info) & AVPLG_I_INCL)) 
+		return PLGFS_CONTINUE;
 
 	sbi = avplg_sbi(file->f_dentry->d_sb, cont->plg_id);
 
@@ -118,6 +128,8 @@ enum avplg_options {
 	opt_noclose,
 	opt_nocache,
 	opt_nowrite,
+	opt_incl,
+	opt_excl,
 	opt_unknown
 };
 
@@ -129,6 +141,8 @@ static match_table_t avplg_tokens = {
 	{opt_noclose, "avplg_noclose"},
 	{opt_nocache, "avplg_nocache"},
 	{opt_nowrite, "avplg_nowrite"},
+	{opt_incl, "avplg_incl=%s"},
+	{opt_excl, "avplg_excl=%s"},
 	{opt_unknown, NULL}
 };
 
@@ -230,6 +244,20 @@ static int avplg_set_opts(struct avplg_sb_info *sbi, char *opts_in,
 				flags |= AVPLG_NOWRITE;
 				break;
 
+			case opt_incl:
+				sbi->incl_str = kstrdup(args[0].from,
+						GFP_KERNEL);
+				if (!sbi->incl_str)
+					return -ENOMEM;
+				break;
+
+			case opt_excl:
+				sbi->excl_str = kstrdup(args[0].from,
+						GFP_KERNEL);
+				if (!sbi->excl_str)
+					return -ENOMEM;
+				break;
+
 			case opt_unknown:
 				plgfs_pass_on_option(opt, opts_out);
 				break;
@@ -242,13 +270,34 @@ static int avplg_set_opts(struct avplg_sb_info *sbi, char *opts_in,
 	return 0;
 }
 
+static struct avplg_sb_info *avplg_sbi_alloc(void)
+{
+	struct avplg_sb_info *sbi;
+
+	sbi = kzalloc(sizeof(struct avplg_sb_info), GFP_KERNEL);
+	if (!sbi)
+		return ERR_PTR(-ENOMEM);
+
+	mutex_init(&sbi->mutex);
+	INIT_LIST_HEAD(&sbi->paths);
+
+	return sbi;
+}
+
+static void avplg_sbi_free(struct avplg_sb_info *sbi)
+{
+	kfree(sbi->incl_str);
+	kfree(sbi->excl_str);
+	kfree(sbi);
+}
+
 static enum plgfs_rv avplg_pre_mount(struct plgfs_context *cont)
 {
 	struct avplg_sb_info *sbi;
 	char *opts_in;
 	char *opts_out;
 
-	sbi = kzalloc(sizeof(struct avplg_sb_info), GFP_KERNEL);
+	sbi = avplg_sbi_alloc();
 	if (!sbi) {
 		cont->op_rv.rv_int = -ENOMEM;
 		return PLGFS_STOP;
@@ -259,7 +308,7 @@ static enum plgfs_rv avplg_pre_mount(struct plgfs_context *cont)
 
 	cont->op_rv.rv_int = avplg_set_opts(sbi, opts_in, opts_out);
 	if (cont->op_rv.rv_int) {
-		kfree(sbi);
+		avplg_sbi_free(sbi);
 		return PLGFS_STOP;
 	}
 
@@ -276,7 +325,18 @@ static enum plgfs_rv avplg_post_mount(struct plgfs_context *cont)
 	sb = cont->op_args.t_mount.sb;
 	sbi = avplg_sbi(sb, cont->plg_id);
 	if (cont->op_rv.rv_int)
-		kfree(sbi);
+		avplg_sbi_free(sbi);
+
+	mutex_lock(&sbi->mutex);
+	/* by default include root path "/" */
+	if (!sbi->incl_str)
+		avplg_set_paths(sb, "/", cont->plg_id, 1);
+	avplg_set_paths(sb, sbi->incl_str, cont->plg_id, 1);
+	avplg_set_paths(sb, sbi->excl_str, cont->plg_id, 0);
+	mutex_unlock(&sbi->mutex);
+
+	kfree(sbi->incl_str);
+	kfree(sbi->excl_str);
 
 	return PLGFS_CONTINUE;
 }
@@ -288,7 +348,7 @@ static enum plgfs_rv avplg_pre_put_super(struct plgfs_context *cont)
 
 	sb = cont->op_args.s_put_super.sb;
 	sbi = avplg_sbi(sb, cont->plg_id);
-	kfree(sbi);
+	avplg_sbi_free(sbi);
 
 	return PLGFS_CONTINUE;
 }
@@ -308,6 +368,18 @@ static enum plgfs_rv avplg_pre_remount_fs(struct plgfs_context *cont)
 	cont->op_rv.rv_int = avplg_set_opts(sbi, opts_in, opts_out);
 	if (cont->op_rv.rv_int)
 		return PLGFS_STOP;
+
+	mutex_lock(&sbi->mutex);
+	avplg_rem_paths(sb, cont->plg_id);
+	/* by default include root path "/" */
+	if (!sbi->incl_str)
+		avplg_set_paths(sb, "/", cont->plg_id, 1);
+	avplg_set_paths(sb, sbi->incl_str, cont->plg_id, 1);
+	avplg_set_paths(sb, sbi->excl_str, cont->plg_id, 0);
+	mutex_unlock(&sbi->mutex);
+
+	kfree(sbi->incl_str);
+	kfree(sbi->excl_str);
 
 	return PLGFS_CONTINUE;
 }
@@ -341,6 +413,10 @@ static enum plgfs_rv avplg_pre_show_options(struct plgfs_context *cont)
 	if (!avplg_sb_nowrite(sbi))
 		seq_printf(seq, ",avplg_write");
 
+	mutex_lock(&sbi->mutex);
+	avplg_show_paths(sb, cont->plg_id, seq);
+	mutex_unlock(&sbi->mutex);
+
 	return PLGFS_CONTINUE;
 }
 
@@ -361,6 +437,7 @@ static enum plgfs_rv avplg_pre_alloc_inode(struct plgfs_context *cont)
 	
 	spin_lock_init(&ii->lock);
 	*plgfs_context_priv(cont, cont->plg_id) = ii;
+	atomic_set(&ii->path_info, 0);
 
 	return PLGFS_CONTINUE;
 }
@@ -381,6 +458,8 @@ static enum plgfs_rv avplg_post_alloc_inode(struct plgfs_context *cont)
 		return PLGFS_CONTINUE;
 	}
 
+	atomic_set(&ii->path_info, AVPLG_I_NONE);
+
 	*plgfs_inode_priv(i, cont->plg_id) = ii;
 
 	return PLGFS_CONTINUE;
@@ -398,6 +477,47 @@ static enum plgfs_rv avplg_pre_destroy_inode_cb(struct plgfs_context *cont)
 	return PLGFS_CONTINUE;
 }
 
+static enum plgfs_rv avplg_post_d_instantiate(struct plgfs_context *cont)
+{
+	struct dentry *d;
+	struct inode *i;
+	struct avplg_inode_info *ii;
+	struct avplg_inode_info *iip;
+
+	d = cont->op_args.d_instantiate.dentry;
+	i = cont->op_args.d_instantiate.inode;
+	if (!i)
+		return PLGFS_CONTINUE;
+
+	iip = avplg_ii(d->d_parent->d_inode, cont->plg_id);
+	ii = avplg_ii(i, cont->plg_id);
+
+	atomic_set(&ii->path_info,
+			atomic_read(&iip->path_info) & ~AVPLG_I_PATH);
+
+	return PLGFS_CONTINUE;
+}
+
+static enum plgfs_rv avplg_pre_kill_sb(struct plgfs_context *cont)
+{
+	struct avplg_sb_info *sbi;
+	struct avplg_path *path;
+	struct avplg_path *tmp;
+
+	/* Remove all paths here, because we are holding dentry ref. for each
+	 * path. This needs to be done before shrink_dcache_for_umount call in
+	 * generic_shutdown_super, otherwise we get dentry still in use warning.
+	 */
+	sbi = avplg_sbi(cont->op_args.t_kill_sb.sb, cont->plg_id);
+
+	list_for_each_entry_safe(path, tmp, &sbi->paths, list) {
+		list_del_init(&path->list);
+		avplg_path_free(path);
+	}
+
+	return PLGFS_CONTINUE;
+}
+
 static struct plgfs_op_cbs avplg_cbs[PLGFS_OP_NR] = {
 	[PLGFS_TOP_MOUNT].pre = avplg_pre_mount,
 	[PLGFS_TOP_MOUNT].post = avplg_post_mount,
@@ -409,9 +529,11 @@ static struct plgfs_op_cbs avplg_cbs[PLGFS_OP_NR] = {
 	[PLGFS_SOP_DESTROY_INODE_CB].pre = avplg_pre_destroy_inode_cb,
 	[PLGFS_REG_FOP_OPEN].pre = avplg_pre_open,
 	[PLGFS_REG_FOP_RELEASE].post = avplg_post_release,
+	[PLGFS_DOP_D_INSTANTIATE].post = avplg_post_d_instantiate,
+	[PLGFS_TOP_KILL_SB].pre = avplg_pre_kill_sb,
 };
 
-static struct plgfs_plugin avplg = {
+struct plgfs_plugin avplg = {
 	.owner = THIS_MODULE,
 	.priority = 850000000,
 	.name = "avplg",
