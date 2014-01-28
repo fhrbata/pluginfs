@@ -83,12 +83,12 @@ int avplg_add_path(struct avplg_sb_info *sbi, struct dentry *d, int id,
 	else
 		info = AVPLG_I_EXCL;
 
-	atomic_set(&ii->path_info, info | AVPLG_I_PATH);
-
 	list_add_tail(&path->list, &sbi->paths);
 
 	plgfs_walk_dtree(&avplg, d, avplg_set_path_cb,
 			(void *)(unsigned long)info);
+
+	atomic_set(&ii->path_info, info | AVPLG_I_PATH);
 
 	return 0;
 }
@@ -129,6 +129,8 @@ int avplg_rem_path(struct avplg_sb_info *sbi, struct dentry *d, int id)
 		ii = avplg_ii(d->d_parent->d_inode, id);
 		info = atomic_read(&ii->path_info) & ~AVPLG_I_PATH;
 	}
+
+	atomic_set(&ii->path_info, info);
 
 	plgfs_walk_dtree(&avplg, d, avplg_set_path_cb,
 			(void *)(unsigned long)info);
