@@ -292,7 +292,7 @@ static void plgfs_i_callback(struct rcu_head *head)
 	ii = plgfs_ii(i);
 	sbi = plgfs_sbi(i->i_sb);
 
-	cont = plgfs_alloc_context(sbi);
+	cont = plgfs_alloc_context_atomic(sbi);
 	if (IS_ERR(cont)) {
 		kmem_cache_free(sbi->cache->ii_cache, plgfs_ii(i));
 		pr_err("pluginfs: cannot alloc context for destroy inode cb, no"

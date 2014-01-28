@@ -564,6 +564,7 @@ static int avplg_inode_info_init(void)
 
 static void avplg_inode_info_exit(void)
 {
+	rcu_barrier();
 	kmem_cache_destroy(avplg_inode_info_cache);
 }
 
