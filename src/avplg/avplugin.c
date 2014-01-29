@@ -337,6 +337,7 @@ static enum plgfs_rv avplg_post_mount(struct plgfs_context *cont)
 
 	kfree(sbi->incl_str);
 	kfree(sbi->excl_str);
+	sbi->incl_str = sbi->excl_str = NULL;
 
 	return PLGFS_CONTINUE;
 }
@@ -380,6 +381,7 @@ static enum plgfs_rv avplg_pre_remount_fs(struct plgfs_context *cont)
 
 	kfree(sbi->incl_str);
 	kfree(sbi->excl_str);
+	sbi->incl_str = sbi->excl_str = NULL;
 
 	return PLGFS_CONTINUE;
 }
